@@ -1,0 +1,52 @@
+@import "tailwindcss";
+@plugin "daisyui";
+@plugin "daisyui/theme" {
+  name: "countdown";
+  default: true;
+  color-scheme: dark;
+  --color-base-100: oklch(20% 0.04 260);
+  --color-base-200: oklch(25% 0.04 260);
+  --color-base-300: oklch(30% 0.04 260);
+  --color-base-content: oklch(90% 0.01 260);
+  --color-primary: oklch(75% 0.18 75);
+  --color-primary-content: oklch(15% 0.04 260);
+  --color-secondary: oklch(50% 0.19 265);
+  --color-secondary-content: oklch(90% 0.01 260);
+  --color-accent: oklch(65% 0.20 150);
+  --color-accent-content: oklch(15% 0.04 260);
+  --color-neutral: oklch(30% 0.04 260);
+  --color-neutral-content: oklch(90% 0.01 260);
+  --color-info: oklch(60% 0.15 240);
+  --color-info-content: oklch(15% 0.04 260);
+  --color-success: oklch(65% 0.20 150);
+  --color-success-content: oklch(15% 0.04 260);
+  --color-warning: oklch(75% 0.18 75);
+  --color-warning-content: oklch(15% 0.04 260);
+  --color-error: oklch(55% 0.25 25);
+  --color-error-content: oklch(95% 0.01 260);
+  --radius-selector: 0.5rem;
+  --radius-field: 0.5rem;
+  --radius-box: 0.75rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 1;
+  --noise: 0;
+}
+
+@keyframes tileIn {
+  0% { opacity: 0; transform: scale(0.5); }
+  60% { opacity: 1; transform: scale(1.1); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes popIn {
+  0% { opacity: 0; transform: scale(0.3); }
+  70% { opacity: 1; transform: scale(1.15); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@theme {
+  --animate-tile-in: tileIn 0.4s ease-out both;
+  --animate-pop-in: popIn 0.3s ease-out;
+}

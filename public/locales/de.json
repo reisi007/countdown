@@ -1,0 +1,62 @@
+{
+  "app": {
+    "title": "Countdown",
+    "subtitle": "Die klassische TV-Gameshow"
+  },
+  "menu": {
+    "solo": "Einzelspieler",
+    "multiplayer": "Mehrspieler",
+    "letters": "Buchstabenrunde",
+    "numbers": "Zahlenrunde",
+    "conundrum": "Conundrum",
+    "createRoom": "Lobby erstellen",
+    "joinRoom": "Lobby beitreten",
+    "roomId": "Raum-ID",
+    "back": "Zurück"
+  },
+  "letters": {
+    "title": "Buchstabenrunde",
+    "pickVowel": "Vokal",
+    "pickConsonant": "Konsonant",
+    "yourWord": "Dein Wort",
+    "submit": "Absenden",
+    "timeUp": "Zeit abgelaufen!",
+    "score": "Punktzahl",
+    "valid": "Gültig",
+    "invalid": "Ungültig",
+    "lettersDrawn": "Buchstaben gezogen: {count}/9"
+  },
+  "numbers": {
+    "title": "Zahlenrunde",
+    "pickLarge": "Groß",
+    "pickSmall": "Klein",
+    "target": "Ziel",
+    "yourAnswer": "Deine Antwort",
+    "submit": "Absenden",
+    "bestSolution": "Beste Lösung",
+    "difference": "Differenz: {diff}",
+    "exact": "Genau!"
+  },
+  "conundrum": {
+    "title": "Conundrum",
+    "solve": "Lösen",
+    "buzzer": "Buzzer",
+    "solved": "Gelöst!",
+    "timesUp": "Zeit abgelaufen!",
+    "answerWas": "Die Antwort war: {word}"
+  },
+  "timer": {
+    "start": "Start",
+    "pause": "Pause",
+    "reset": "Zurücksetzen"
+  },
+  "multiplayer": {
+    "waiting": "Warte auf Spieler...",
+    "playersConnected": "Spieler: {count}",
+    "hostControls": "Host-Steuerung",
+    "youAreHost": "Du bist der Host",
+    "hostLeft": "Host hat das Spiel verlassen — neuer Host wird gewählt...",
+    "copyLink": "Einladungslink kopieren",
+    "copied": "Kopiert!"
+  }
+}

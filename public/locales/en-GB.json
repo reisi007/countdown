@@ -1,0 +1,62 @@
+{
+  "app": {
+    "title": "Countdown",
+    "subtitle": "The Classic TV Game Show"
+  },
+  "menu": {
+    "solo": "Solo Play",
+    "multiplayer": "Multiplayer",
+    "letters": "Letters Round",
+    "numbers": "Numbers Round",
+    "conundrum": "Conundrum",
+    "createRoom": "Create Lobby",
+    "joinRoom": "Join Lobby",
+    "roomId": "Room ID",
+    "back": "Back"
+  },
+  "letters": {
+    "title": "Letters Round",
+    "pickVowel": "Vowel",
+    "pickConsonant": "Consonant",
+    "yourWord": "Your Word",
+    "submit": "Submit",
+    "timeUp": "Time's Up!",
+    "score": "Score",
+    "valid": "Valid",
+    "invalid": "Invalid",
+    "lettersDrawn": "Letters Drawn: {count}/9"
+  },
+  "numbers": {
+    "title": "Numbers Round",
+    "pickLarge": "Large",
+    "pickSmall": "Small",
+    "target": "Target",
+    "yourAnswer": "Your Answer",
+    "submit": "Submit",
+    "bestSolution": "Best Solution",
+    "difference": "Difference: {diff}",
+    "exact": "Exact!"
+  },
+  "conundrum": {
+    "title": "Conundrum",
+    "solve": "Solve",
+    "buzzer": "Buzzer",
+    "solved": "Solved!",
+    "timesUp": "Time's Up!",
+    "answerWas": "The answer was: {word}"
+  },
+  "timer": {
+    "start": "Start",
+    "pause": "Pause",
+    "reset": "Reset"
+  },
+  "multiplayer": {
+    "waiting": "Waiting for players...",
+    "playersConnected": "Players: {count}",
+    "hostControls": "Host Controls",
+    "youAreHost": "You are the host",
+    "hostLeft": "Host left — electing new host...",
+    "copyLink": "Copy Invite Link",
+    "copied": "Copied!"
+  }
+}
