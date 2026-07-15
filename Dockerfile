@@ -1,23 +1,23 @@
-FROM node:22-slim AS install
+FROM node:26-slim AS install
 WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@10 --activate
 COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 
-FROM node:22-slim AS build
+FROM node:26-slim AS build
 WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@10 --activate
 COPY --from=install /app/node_modules ./node_modules
 COPY . .
 RUN pnpm build
 
-FROM node:22-slim AS prune
+FROM node:26-slim AS prune
 WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@10 --activate
 COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --prod --frozen-lockfile
 
-FROM node:22-slim AS runner
+FROM node:26-slim AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs

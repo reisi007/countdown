@@ -7,7 +7,7 @@ Countdown — a web-based clone of the classic TV game show with solo and WebRTC
 | Layer | Choice | Version |
 |-------|--------|---------|
 | Framework | Next.js (App Router) | 15.x |
-| Runtime | Node.js | 22 LTS |
+| Runtime | Node.js | 26 |
 | Server | Express (custom server) | 4.x |
 | WebRTC Signaling | PeerJS | 1.x |
 | Styling | Tailwind CSS v4 + daisyUI v5 | latest |
@@ -180,7 +180,7 @@ pnpm test:e2e      # Playwright (requires built app)
    - Stage 1 (Install): `pnpm install --frozen-lockfile`
    - Stage 2 (Build): `pnpm build` (Next.js production build)
    - Stage 3 (Prune): `pnpm install --prod --frozen-lockfile`
-   - Stage 4 (Runner): Copy build artifacts + server.js + prod deps → slim `node:22-slim` image (~120-150 MB)
+   - Stage 4 (Runner): Copy build artifacts + server.js + prod deps → slim `node:26-slim` image (~120-150 MB)
 5. **Push**: `docker push` to GHCR (private repo → private image)
 6. **Deploy**: POST webhook to Portainer → pull new image → restart container (<10s downtime)
 7. **Local deploy**: `cd deploy && docker compose pull && docker compose up -d`
