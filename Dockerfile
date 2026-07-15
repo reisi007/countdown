@@ -1,20 +1,20 @@
-FROM node:26-slim AS install
+FROM ghcr.io/pnpm/pnpm:11 AS install
+RUN pnpm runtime set node 26 -g
 WORKDIR /app
-RUN corepack enable && corepack prepare pnpm@10 --activate
-COPY package.json pnpm-lock.yaml ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
 
-FROM node:26-slim AS build
+FROM ghcr.io/pnpm/pnpm:11 AS build
+RUN pnpm runtime set node 26 -g
 WORKDIR /app
-RUN corepack enable && corepack prepare pnpm@10 --activate
 COPY --from=install /app/node_modules ./node_modules
 COPY . .
 RUN pnpm build
 
-FROM node:26-slim AS prune
+FROM ghcr.io/pnpm/pnpm:11 AS prune
+RUN pnpm runtime set node 26 -g
 WORKDIR /app
-RUN corepack enable && corepack prepare pnpm@10 --activate
-COPY package.json pnpm-lock.yaml ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm install --prod --frozen-lockfile
 
 FROM node:26-slim AS runner
