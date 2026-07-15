@@ -1,5 +1,11 @@
 import Link from "next/link";
 
+const LOCALES = [
+  { code: "en-GB", label: "English (UK)" },
+  { code: "en-US", label: "English (US)" },
+  { code: "de", label: "Deutsch" },
+] as const;
+
 type Props = {
   params: Promise<{ locale: string }>;
 };
@@ -29,6 +35,18 @@ export default async function MainMenu({ params }: Props) {
         >
           Multiplayer
         </Link>
+      </div>
+
+      <div className="flex items-center gap-2">
+        {LOCALES.map((loc) => (
+          <Link
+            key={loc.code}
+            href={`/${loc.code}`}
+            className={`btn btn-xs ${locale === loc.code ? "btn-primary" : "btn-ghost"}`}
+          >
+            {loc.label}
+          </Link>
+        ))}
       </div>
     </div>
   );

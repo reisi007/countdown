@@ -50,6 +50,12 @@
     "pause": "Pause",
     "reset": "Zurücksetzen"
   },
+  "locale": {
+    "label": "Sprache",
+    "en-GB": "English (UK)",
+    "en-US": "English (US)",
+    "de": "Deutsch"
+  },
   "multiplayer": {
     "waiting": "Warte auf Spieler...",
     "playersConnected": "Spieler: {count}",
