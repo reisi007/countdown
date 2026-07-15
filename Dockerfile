@@ -19,7 +19,6 @@ COPY --from=build --chown=nonroot:nonroot /app/.next ./.next
 COPY --from=build --chown=nonroot:nonroot /app/public ./public
 COPY --from=build --chown=nonroot:nonroot /app/package.json ./package.json
 COPY --from=build --chown=nonroot:nonroot /app/server.js ./server.js
-COPY --from=build --chown=nonroot:nonroot /app/next.config.mjs ./next.config.mjs
 
 ENV NODE_ENV=production
 ENV PORT=3000
