@@ -50,3 +50,23 @@
   --animate-tile-in: tileIn 0.4s ease-out both;
   --animate-pop-in: popIn 0.3s ease-out;
 }
+
+/* Responsive sizing for daisyUI radial-progress timer.
+   CSS custom properties can't be driven by Tailwind responsive
+   variants, so media queries live here instead. */
+.timer-radial {
+  --size: 6rem;
+  --thickness: 0.4rem;
+}
+@media (min-width: 640px) {
+  .timer-radial {
+    --size: 7rem;
+    --thickness: 0.45rem;
+  }
+}
+@media (min-width: 768px) {
+  .timer-radial {
+    --size: 8rem;
+    --thickness: 0.5rem;
+  }
+}

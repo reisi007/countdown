@@ -344,7 +344,7 @@ export default function MultiplayerConundrumPage() {
           </Link>
         </div>
         <div className="flex-none">
-          <h1 className="text-xl font-bold text-primary">Conundrum</h1>
+          <h1 className="text-lg sm:text-xl font-bold text-primary">Conundrum</h1>
         </div>
       </div>
 

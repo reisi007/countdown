@@ -10,7 +10,7 @@ export function NumberBoard({ tiles, target, hideTarget = false, usedIndices }: 
 }) {
   return (
     <div className="flex flex-col items-center gap-6">
-      <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
+      <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 md:gap-4">
         {tiles.map((value, index) => (
           <NumberTile
             key={index}
@@ -32,14 +32,14 @@ export function NumberBoard({ tiles, target, hideTarget = false, usedIndices }: 
           </span>
           {hideTarget ? (
             <div
-              className="flex h-20 w-32 items-center justify-center rounded-lg border-2 border-dashed border-warning/30 bg-base-300/30 text-4xl font-bold italic select-none text-warning/40"
+              className="flex h-16 w-28 sm:h-20 sm:w-32 items-center justify-center rounded-lg border-2 border-dashed border-warning/30 bg-base-300/30 text-3xl sm:text-4xl font-bold italic select-none text-warning/40"
               aria-label="Target is hidden until all numbers are drawn"
             >
               ???
             </div>
           ) : (
             <div
-              className="flex h-20 w-32 items-center justify-center rounded-lg border-2 border-warning bg-warning/10 text-4xl font-bold tabular-nums text-warning shadow-lg shadow-warning/10"
+              className="flex h-16 w-28 sm:h-20 sm:w-32 items-center justify-center rounded-lg border-2 border-warning bg-warning/10 text-3xl sm:text-4xl font-bold tabular-nums text-warning shadow-lg shadow-warning/10"
               style={{ animation: "tileIn 0.5s ease-out 0.3s both" }}
             >
               {target}

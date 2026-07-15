@@ -23,6 +23,7 @@ export type ConundrumGameProps = {
   solvedByName?: string;
   feedback?: "correct" | "wrong" | null;
   showBuzzButton?: boolean;
+  showTimer?: boolean;
   onNewRound?: () => void;
   showNewRound?: boolean;
   backLink?: string;
@@ -136,6 +137,7 @@ export function ConundrumGame({
   solvedByName,
   feedback,
   showBuzzButton,
+  showTimer = true,
   onNewRound,
   showNewRound,
   backLink,
@@ -172,7 +174,7 @@ export function ConundrumGame({
               {scrambled.split("").map((letter, i) => (
                 <kbd
                   key={i}
-                  className="kbd kbd-lg text-lg font-bold border-warning"
+                  className="kbd flex h-12 w-10 sm:h-14 sm:w-12 md:h-16 md:w-14 items-center justify-center rounded-lg border-2 text-xl sm:text-2xl md:text-3xl font-bold border-warning"
                 >
                   {letter}
                 </kbd>
@@ -180,7 +182,7 @@ export function ConundrumGame({
             </div>
           </div>
 
-          <Timer timeRemaining={timeRemaining} totalTime={timerDuration} />
+          {showTimer && <Timer timeRemaining={timeRemaining} totalTime={timerDuration} />}
 
           {phase === "playing" && showBuzzButton && (
             <button

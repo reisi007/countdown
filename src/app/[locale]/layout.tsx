@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Lexend_Deca } from "next/font/google";
 import "@/styles/globals.css";
 
@@ -11,6 +11,12 @@ export const metadata: Metadata = {
   title: "Countdown",
   description:
     "Countdown — a web-based clone of the classic TV game show",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: "#0a192f",
 };
 
 export default function LocaleLayout({

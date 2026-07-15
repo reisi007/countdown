@@ -14,19 +14,23 @@ import {
   type LettersGameState,
 } from "@/lib/game/letters";
 import { LettersGame } from "@/components/LettersGame";
+import { SoloTimerSetup } from "@/components/SoloTimerSetup";
 
 const T = {
   "en-GB": {
     title: "Letters Round",
     back: "Back",
+    timer: "Timer",
   },
   "en-US": {
     title: "Letters Round",
     back: "Back",
+    timer: "Timer",
   },
   de: {
     title: "Buchstabenrunde",
     back: "Zur\u00fcck",
+    timer: "Timer",
   },
 };
 
@@ -48,7 +52,8 @@ export default function SoloLettersPage() {
   const [timeLeft, setTimeLeft] = useState(30);
   const [longestWord, setLongestWord] = useState<string | null>(null);
   const [searching, setSearching] = useState(false);
-  const [timerEnabled, setTimerEnabled] = useState(true);
+  const [timerEnabled, setTimerEnabled] = useState(false);
+  const [timerDuration, setTimerDuration] = useState(30);
 
   const finishRound = useCallback(() => {
     const word = playerWord.trim().toUpperCase();
@@ -112,13 +117,13 @@ export default function SoloLettersPage() {
     setGame((g) => {
       if (g.phase !== "drawing") return g;
       const next = type === "vowel" ? addVowel(g) : addConsonant(g);
-      if (next.phase === "playing") setTimeLeft(30);
+      if (next.phase === "playing") setTimeLeft(timerDuration);
       return next;
     });
     setPlayerWord("");
     setLongestWord(null);
     setAttempts([]);
-  }, []);
+  }, [timerDuration]);
 
   const handleSubmit = useCallback(() => {
     const word = playerWord.trim().toUpperCase();
@@ -132,11 +137,10 @@ export default function SoloLettersPage() {
   const handleNewRound = useCallback(() => {
     setGame(createLettersGame());
     setPlayerWord("");
-    setTimeLeft(30);
+    setTimeLeft(timerDuration);
     setLongestWord(null);
     setAttempts([]);
-    setTimerEnabled(true);
-  }, []);
+  }, [timerDuration]);
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -145,13 +149,22 @@ export default function SoloLettersPage() {
           <Link href={`/${locale}/solo`} className="btn btn-ghost btn-sm">{t.back}</Link>
         </div>
         <div className="flex-none">
-          <h1 className="text-lg font-bold text-primary">{t.title}</h1>
+          <h1 className="text-base sm:text-lg font-bold text-primary">{t.title}</h1>
         </div>
         <div className="flex-1" />
       </div>
 
-      <div className="flex flex-1 flex-col lg:flex-row items-center lg:items-start justify-center gap-6 p-6">
-        <div className="w-full max-w-lg rounded-box bg-base-200/60 p-8 shadow-lg flex flex-col items-center gap-6">
+      <div className="flex flex-1 flex-col lg:flex-row items-center lg:items-start justify-center gap-4 sm:gap-6 p-4 sm:p-6">
+        <div className="w-full max-w-lg rounded-box bg-base-200/60 p-4 sm:p-6 md:p-8 shadow-lg flex flex-col items-center gap-6">
+          {game.phase === "drawing" && (
+            <SoloTimerSetup
+              enabled={timerEnabled}
+              duration={timerDuration}
+              onToggle={setTimerEnabled}
+              onDurationChange={setTimerDuration}
+              label={t.timer}
+            />
+          )}
           <LettersGame
             locale={locale}
             tiles={game.tiles}
@@ -167,8 +180,8 @@ export default function SoloLettersPage() {
             onPlayerWordChange={(word) => setPlayerWord(word.toUpperCase().replace(/[^A-Z\u00C4\u00D6\u00DC\u00DF]/g, ""))}
             onSubmitWord={handleSubmit}
             timeRemaining={timeLeft}
-            timerDuration={30}
-            showTimer={game.phase === "playing"}
+            timerDuration={timerDuration}
+            showTimer={timerEnabled && game.phase === "playing"}
             attempts={attempts}
             longestWord={longestWord}
             searching={searching}
@@ -178,7 +191,7 @@ export default function SoloLettersPage() {
         </div>
 
         {attempts.length > 0 && (
-          <div className="w-full max-w-xs">
+          <div className="w-full max-w-xs md:max-w-sm">
             <div className="card bg-base-200 sticky top-4">
               <div className="card-body p-4">
                 <h2 className="card-title text-sm">Your words <span className="badge badge-sm">{attempts.length}</span></h2>

@@ -10,7 +10,7 @@ export function LetterTile({ letter, delay = 0, isEmpty = false, isActive = fals
   if (isEmpty) {
     return (
       <div
-        className="flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center rounded-lg border-2 border-dashed border-base-content/10 bg-base-300/20 opacity-30"
+        className="flex h-16 w-16 sm:h-20 sm:w-20 md:h-24 md:w-24 items-center justify-center rounded-lg border-2 border-dashed border-base-content/10 bg-base-300/20 opacity-30"
         aria-hidden
       />
     );
@@ -18,7 +18,7 @@ export function LetterTile({ letter, delay = 0, isEmpty = false, isActive = fals
 
   return (
     <div
-      className={`flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center rounded-lg border-2 shadow-md transition-all duration-300 select-none
+      className={`flex h-16 w-16 sm:h-20 sm:w-20 md:h-24 md:w-24 items-center justify-center rounded-lg border-2 shadow-md transition-all duration-300 select-none
         ${isUsed
           ? "border-base-content/10 bg-blue-950/20 text-base-content/15 scale-90 opacity-25 grayscale"
           : isActive
@@ -30,7 +30,7 @@ export function LetterTile({ letter, delay = 0, isEmpty = false, isActive = fals
         fontFamily: "'Lexend Deca', sans-serif",
       }}
     >
-      <span className="text-3xl sm:text-4xl font-bold tracking-wider uppercase">
+      <span className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-wider uppercase">
         {letter}
       </span>
     </div>

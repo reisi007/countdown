@@ -178,16 +178,16 @@ export function LettersGame({
               <p className="text-sm text-base-content/50">
                 {t.lettersDrawn}: {tilesDrawn}/9
               </p>
-              <div className="flex gap-4">
+              <div className="flex gap-3 sm:gap-4">
                 <button
-                  className="btn btn-primary btn-lg min-w-36"
+                  className="btn btn-primary btn-lg min-w-32 sm:min-w-36"
                   onClick={onDrawVowel}
                   disabled={!canDrawVowel}
                 >
                   {t.vowel}
                 </button>
                 <button
-                  className="btn btn-secondary btn-lg min-w-36"
+                  className="btn btn-secondary btn-lg min-w-32 sm:min-w-36"
                   onClick={onDrawConsonant}
                   disabled={!canDrawConsonant}
                 >
@@ -214,7 +214,7 @@ export function LettersGame({
             <div className="card-body items-center gap-3">
               <input
                 type="text"
-                className="input input-bordered input-lg w-full text-center text-xl uppercase tracking-[0.3em] font-mono"
+                className="input input-bordered input-lg w-full text-center text-lg sm:text-xl uppercase tracking-[0.2em] sm:tracking-[0.3em] font-mono"
                 placeholder={t.typeWord}
                 value={playerWord}
                 onChange={(e) =>

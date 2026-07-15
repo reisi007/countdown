@@ -408,16 +408,16 @@ export default function RoomPage() {
     <div className="flex min-h-screen flex-col p-4">
       <div className="navbar mb-4">
         <div className="flex-1">
-          <h1 className="text-2xl font-bold text-primary">Countdown</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-primary">Countdown</h1>
         </div>
         <div className="flex-none gap-2">
-          <span className="badge badge-primary badge-lg">
+          <span className="badge badge-primary badge-md sm:badge-lg">
             Room: {roomId}
           </span>
         </div>
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-6 flex-1">
+      <div className="flex flex-col lg:flex-row gap-4 sm:gap-6 flex-1">
         <div className="card bg-base-200 flex-1">
           <div className="card-body">
             <h2 className="card-title">
@@ -494,7 +494,7 @@ export default function RoomPage() {
           </div>
         </div>
 
-        <div className="card bg-base-200 lg:w-80">
+        <div className="card bg-base-200 w-full lg:w-80">
           <div className="card-body">
             <h2 className="card-title">Room Controls</h2>
             <div className="divider" />

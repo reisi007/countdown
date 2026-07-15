@@ -481,12 +481,12 @@ export default function MultiplayerNumbersPage() {
           </Link>
         </div>
         <div className="flex-none">
-          <h1 className="text-xl font-bold text-warning">Numbers Round</h1>
+          <h1 className="text-lg sm:text-xl font-bold text-warning">Numbers Round</h1>
         </div>
         <div className="flex-1" />
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-6 flex-1 justify-center">
+      <div className="flex flex-col lg:flex-row gap-4 sm:gap-6 flex-1 justify-center">
         <div className="flex flex-col items-center gap-6 flex-1 max-w-lg mx-auto">
           {phase === "drawing" && (
             <NumberDrawer
@@ -529,16 +529,14 @@ export default function MultiplayerNumbersPage() {
               {(phase === "playing" || (phase === "scoring" && mySubmission)) &&
                 timerDuration > 0 && (
                   <div
-                    className="radial-progress text-warning"
+                    className="radial-progress timer-radial text-warning"
                     style={
                       {
                         "--value": (timeRemaining / timerDuration) * 100,
-                        "--size": "6rem",
-                        "--thickness": "0.4rem",
                       } as React.CSSProperties
                     }
                   >
-                    <span className="text-xl font-bold">{timeRemaining}</span>
+                    <span className="text-lg sm:text-xl font-bold">{timeRemaining}</span>
                   </div>
                 )}
 

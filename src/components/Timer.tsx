@@ -26,16 +26,14 @@ export function Timer({ timeRemaining, totalTime = 30, onTimeUp }: {
 
   return (
     <div
-      className={`radial-progress ${colorClass}`}
+      className={`radial-progress timer-radial ${colorClass}`}
       style={{
         "--value": percentage,
-        "--size": "8rem",
-        "--thickness": "0.5rem",
       } as React.CSSProperties}
       role="progressbar"
       aria-valuenow={percentage}
     >
-      <span className="text-2xl font-bold text-base-content">
+      <span className="text-xl sm:text-2xl font-bold text-base-content">
         {timeRemaining}
       </span>
     </div>

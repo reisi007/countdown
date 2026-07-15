@@ -62,9 +62,9 @@ export function NumberDrawer({
       </div>
 
       {isHost ? (
-        <div className="flex gap-4">
+        <div className="flex gap-3 sm:gap-4">
           <button
-            className="btn btn-warning btn-lg min-w-32"
+            className="btn btn-warning btn-lg min-w-28 sm:min-w-32"
             onClick={onPickLarge}
             disabled={!canPickLarge}
           >
@@ -72,7 +72,7 @@ export function NumberDrawer({
             <span className="badge badge-sm ml-1">{largeRemaining}</span>
           </button>
           <button
-            className="btn btn-outline btn-warning btn-lg min-w-32"
+            className="btn btn-outline btn-warning btn-lg min-w-28 sm:min-w-32"
             onClick={onPickSmall}
             disabled={!canPickSmall}
           >
@@ -93,7 +93,7 @@ export function NumberDrawer({
       )}
 
       <div
-        className="flex h-20 w-32 items-center justify-center rounded-lg border-2 border-dashed border-warning/30 bg-base-300/30 text-4xl font-bold italic select-none text-warning/40"
+        className="flex h-16 w-28 sm:h-20 sm:w-32 items-center justify-center rounded-lg border-2 border-dashed border-warning/30 bg-base-300/30 text-3xl sm:text-4xl font-bold italic select-none text-warning/40"
         aria-label="Target hidden until drawing is complete"
       >
         ???

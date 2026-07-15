@@ -6,7 +6,7 @@ export default async function SoloMenu({ params }: Props) {
   const { locale } = await params;
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-6 p-4">
-      <h1 className="text-4xl font-bold text-primary">Solo Play</h1>
+      <h1 className="text-3xl sm:text-4xl font-bold text-primary">Solo Play</h1>
       <div className="flex w-full max-w-md flex-col gap-4">
         <Link href={`/${locale}/solo/letters`} className="btn btn-primary btn-lg w-full">Letters Round</Link>
         <Link href={`/${locale}/solo/numbers`} className="btn btn-secondary btn-lg w-full">Numbers Round</Link>

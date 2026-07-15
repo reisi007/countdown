@@ -291,11 +291,11 @@ export default function MultiplayerLettersPage() {
           </Link>
         </div>
         <div className="flex-none">
-          <h1 className="text-xl font-bold text-primary">Letters Round</h1>
+          <h1 className="text-lg sm:text-xl font-bold text-primary">Letters Round</h1>
         </div>
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-6 flex-1 justify-center">
+      <div className="flex flex-col lg:flex-row gap-4 sm:gap-6 flex-1 justify-center">
         <div className="flex flex-col items-center gap-6 flex-1 max-w-lg mx-auto">
           <LettersGame
             locale={locale}

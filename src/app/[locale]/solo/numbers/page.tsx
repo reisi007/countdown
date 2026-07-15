@@ -16,6 +16,8 @@ import {
 } from "@/lib/game/numbers";
 import { NumberDrawer } from "@/components/NumberDrawer";
 import { NumberPlayInteractive } from "@/components/NumberPlayInteractive";
+import { SoloTimerSetup } from "@/components/SoloTimerSetup";
+import { Timer } from "@/components/Timer";
 
 type Op = "+" | "-" | "\u00d7" | "\u00f7";
 
@@ -39,6 +41,7 @@ const T = {
     bestDiff: "Best (diff: {diff})",
     noSolution: "No solution found",
     newRound: "New Round",
+    timer: "Timer",
   },
   "en-US": {
     back: "Back",
@@ -59,6 +62,7 @@ const T = {
     bestDiff: "Best (diff: {diff})",
     noSolution: "No solution found",
     newRound: "New Round",
+    timer: "Timer",
   },
   de: {
     back: "Zur\u00fcck",
@@ -79,6 +83,7 @@ const T = {
     bestDiff: "Beste (Diff: {diff})",
     noSolution: "Keine L\u00f6sung gefunden",
     newRound: "Neue Runde",
+    timer: "Timer",
   },
 };
 
@@ -173,6 +178,9 @@ export default function SoloNumbersPage() {
   const [showSolver, setShowSolver] = useState(false);
   const [nextId, setNextId] = useState(1);
   const [bestAttempt, setBestAttempt] = useState<{ result: number; diff: number } | null>(null);
+  const [timerEnabled, setTimerEnabled] = useState(false);
+  const [timerDuration, setTimerDuration] = useState(30);
+  const [timeLeft, setTimeLeft] = useState(30);
 
   const tiles = game.tiles.map((t) => t.value);
   const allNumbers = [...tiles, ...results.map((r) => r.value)];
@@ -190,7 +198,8 @@ export default function SoloNumbersPage() {
     setShowSolver(false);
     setNextId(1);
     setBestAttempt(null);
-  }, []);
+    setTimeLeft(timerDuration);
+  }, [timerDuration]);
 
   const selectNumber = useCallback((index: number) => {
     if (game.phase !== "playing") return;
@@ -290,6 +299,36 @@ export default function SoloNumbersPage() {
     setSolution(solveNumbers(tiles, game.target));
   }, [tiles, game.target]);
 
+  const handleTimeout = useCallback(() => {
+    setPlayerDiff((diff) => {
+      if (diff !== null) return diff;
+      return bestAttempt ? bestAttempt.diff : Math.abs((results[results.length - 1]?.value ?? 0) - game.target);
+    });
+    setGame((g) => ({ ...g, phase: "scoring" }));
+  }, [bestAttempt, results, game.target]);
+
+  useEffect(() => {
+    if (game.phase === "playing") setTimeLeft(timerDuration);
+  }, [game.phase, timerDuration]);
+
+  useEffect(() => {
+    if (game.phase !== "playing") return;
+    if (!timerEnabled) return;
+
+    const interval = setInterval(() => {
+      setTimeLeft((t) => {
+        if (t <= 1) {
+          clearInterval(interval);
+          handleTimeout();
+          return 0;
+        }
+        return t - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [game.phase, timerEnabled, handleTimeout]);
+
   return (
     <div className="flex min-h-screen flex-col">
       <div className="navbar bg-base-200/50">
@@ -297,51 +336,67 @@ export default function SoloNumbersPage() {
           <Link href={`/${locale}/solo`} className="btn btn-ghost btn-sm">{t.back}</Link>
         </div>
         <div className="flex-none">
-          <h1 className="text-lg font-bold text-warning">{t.title}</h1>
+          <h1 className="text-base sm:text-lg font-bold text-warning">{t.title}</h1>
         </div>
         <div className="flex-1" />
       </div>
 
-      <div className="flex flex-1 flex-col items-center gap-6 p-6">
+      <div className="flex flex-1 flex-col items-center gap-6 p-4 sm:p-6">
         <MiniCalculator locale={locale} />
 
         {game.phase === "drawing" && (
-          <NumberDrawer
-            locale={locale}
-            tiles={tiles}
-            isHost={true}
-            onPickLarge={() => setGame((g) => addLargeNumber(g))}
-            onPickSmall={() => setGame((g) => addSmallNumber(g))}
-            canPickLarge={canAddLarge(game.tiles) && game.largeNumbers.length > 0}
-            canPickSmall={canAddSmall(game.tiles) && game.smallNumbers.length > 0}
-            largeRemaining={game.largeNumbers.length}
-            smallRemaining={game.smallNumbers.length}
-          />
+          <>
+            <div className="w-full max-w-sm">
+              <SoloTimerSetup
+                enabled={timerEnabled}
+                duration={timerDuration}
+                onToggle={setTimerEnabled}
+                onDurationChange={setTimerDuration}
+                label={t.timer}
+              />
+            </div>
+            <NumberDrawer
+              locale={locale}
+              tiles={tiles}
+              isHost={true}
+              onPickLarge={() => setGame((g) => addLargeNumber(g))}
+              onPickSmall={() => setGame((g) => addSmallNumber(g))}
+              canPickLarge={canAddLarge(game.tiles) && game.largeNumbers.length > 0}
+              canPickSmall={canAddSmall(game.tiles) && game.smallNumbers.length > 0}
+              largeRemaining={game.largeNumbers.length}
+              smallRemaining={game.smallNumbers.length}
+            />
+          </>
         )}
 
         {(game.phase === "playing" || game.phase === "scoring") && (
-          <NumberPlayInteractive
-            locale={locale}
-            tiles={tiles}
-            target={game.target}
-            results={results}
-            usedIndices={usedIndices}
-            selected={selected}
-            pendingOp={pendingOp}
-            feedback={feedback}
-            bestAttempt={bestAttempt}
-            onSelectNumber={selectNumber}
-            onSelectOp={selectOp}
-            onUndo={handleUndo}
-            onResetAll={handleResetAll}
-            onFinish={handleFinish}
-            onGiveUp={handleGiveUp}
-            steps={results}
-          />
+          <>
+            {timerEnabled && game.phase === "playing" && (
+              <Timer timeRemaining={timeLeft} totalTime={timerDuration} />
+            )}
+            <NumberPlayInteractive
+              locale={locale}
+              tiles={tiles}
+              target={game.target}
+              results={results}
+              usedIndices={usedIndices}
+              selected={selected}
+              pendingOp={pendingOp}
+              feedback={feedback}
+              bestAttempt={bestAttempt}
+              onSelectNumber={selectNumber}
+              onSelectOp={selectOp}
+              onUndo={handleUndo}
+              onResetAll={handleResetAll}
+              onFinish={handleFinish}
+              onGiveUp={handleGiveUp}
+              steps={results}
+            />
+          </>
         )}
 
         {game.phase === "scoring" && playerDiff !== null && (
-          <div className="w-full max-w-xl rounded-box bg-base-200/60 p-8 shadow-lg flex flex-col items-center gap-6">
+          <div className="w-full max-w-xl rounded-box bg-base-200/60 p-4 sm:p-6 md:p-8 shadow-lg flex flex-col items-center gap-6">
             <div className={`text-3xl font-bold tabular-nums ${playerDiff === 0 ? "text-success" : "text-warning"}`}>
               {playerDiff === 0 ? t.exact : t.offBy.replace("{diff}", String(playerDiff))}
             </div>

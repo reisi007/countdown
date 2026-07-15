@@ -96,9 +96,9 @@ export function NumberPlayInteractive({
   const allNumbers = [...tiles, ...results.map((r) => r.value)];
 
   return (
-    <div className="flex flex-1 flex-col lg:flex-row items-center lg:items-start justify-center gap-6 w-full">
+    <div className="flex flex-1 flex-col lg:flex-row items-center lg:items-start justify-center gap-4 sm:gap-6 w-full">
       <div className="flex flex-col items-center gap-4 w-full max-w-xl">
-        <div className="text-5xl font-bold tabular-nums text-warning">
+        <div className="text-4xl sm:text-5xl font-bold tabular-nums text-warning">
           {target}
         </div>
 
@@ -164,16 +164,16 @@ export function NumberPlayInteractive({
           )}
           {selected.length === 1 && pendingOp && (
             <p className="text-sm text-warning">
-              {allNumbers[selected[0]]} {OP_LABELS[pendingOp] ?? pendingOp} ?
-              \u2014 {t.pickSecond}
+              {allNumbers[selected[0]]} {OP_LABELS[pendingOp] ?? pendingOp}?{" "}
+              {"\u2014"} {t.pickSecond}
             </p>
           )}
 
-          <div className="flex gap-3">
+          <div className="flex gap-2 sm:gap-3">
             {OPS.map((op) => (
               <button
                 key={op}
-                className={`btn btn-warning btn-lg w-16 text-2xl ${pendingOp === op ? "btn-active" : ""}`}
+                className={`btn btn-warning btn-lg w-14 sm:w-16 text-xl sm:text-2xl ${pendingOp === op ? "btn-active" : ""}`}
                 onClick={() => onSelectOp(op)}
               >
                 {OP_LABELS[op]}
@@ -193,7 +193,7 @@ export function NumberPlayInteractive({
             </p>
           )}
 
-          <div className="flex gap-3 mt-2">
+          <div className="flex flex-wrap justify-center gap-2 mt-2">
             {results.length > 0 && (
               <button className="btn btn-ghost btn-sm text-warning" onClick={onUndo}>
                 {t.undo}
@@ -228,7 +228,7 @@ export function NumberPlayInteractive({
       </div>
 
       {(steps ?? results).length > 0 && (
-        <div className="w-full max-w-xs">
+        <div className="w-full max-w-xs md:max-w-sm">
           <div className="card bg-base-200 sticky top-4">
             <div className="card-body p-4">
               <h3 className="card-title text-sm">{t.yourSteps}</h3>
