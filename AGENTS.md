@@ -6,7 +6,7 @@ Countdown — a web-based clone of the classic TV game show with solo and WebRTC
 
 | Layer | Choice | Version |
 |-------|--------|---------|
-| Framework | Next.js (App Router) | 15.x |
+| Framework | Next.js (App Router) | 16.x |
 | Runtime | Node.js | 26 |
 | Server | Express (custom server) | 4.x |
 | WebRTC Signaling | PeerJS | 1.x |
@@ -54,7 +54,7 @@ countdown/
 │   │   └── db.ts                  # In-memory store (no persistent DB)
 │   ├── styles/
 │   │   └── globals.css            # Tailwind v4 imports + daisyUI theme
-│   └── middleware.ts              # Locale redirect & i18n routing
+│   └── proxy.ts                   # Locale redirect & i18n routing (Next.js "proxy" convention)
 ├── public/
 │   └── locales/
 │       ├── en-GB.json

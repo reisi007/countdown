@@ -1,5 +1,5 @@
 const { createServer } = require("http");
-const { parse } = require("url");
+const { URL } = require("url");
 const next = require("next");
 const { ExpressPeerServer } = require("peer");
 
@@ -11,6 +11,7 @@ const app = next({ dev, hostname, port });
 const handle = app.getRequestHandler();
 
 app.prepare().then(() => {
+  const upgradeHandler = app.getUpgradeHandler();
   const express = require("express");
   const server = express();
 
@@ -20,13 +21,29 @@ app.prepare().then(() => {
     path: "/signaling",
     allow_discovery: true,
   });
-
   server.use(peerServer);
+
+  // PeerJS registers a single 'upgrade' listener on httpServer (via ws).
+  // Capture it, remove it, and install our own router so Next.js HMR
+  // upgrades (/_next/) don't get swallowed by PeerJS in dev mode.
+  const peerUpgradeListeners = httpServer.listeners("upgrade");
+  const peerUpgradeHandler = peerUpgradeListeners[0];
+  httpServer.removeAllListeners("upgrade");
+
+  httpServer.on("upgrade", (req, socket, head) => {
+    const { pathname } = new URL(req.url || "", "http://localhost");
+    if (pathname.startsWith("/_next/")) {
+      upgradeHandler(req, socket, head).catch(() => socket.destroy());
+    } else if (pathname.startsWith("/signaling")) {
+      peerUpgradeHandler(req, socket, head);
+    } else {
+      socket.destroy();
+    }
+  });
 
   server.all("*", (req, res) => {
     if (req.url?.startsWith("/signaling")) return;
-    const parsedUrl = parse(req.url, true);
-    handle(req, res, parsedUrl);
+    handle(req, res);
   });
 
   httpServer.listen(port, hostname, () => {

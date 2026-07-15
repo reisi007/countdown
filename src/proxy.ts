@@ -48,7 +48,7 @@ function getPreferredLocale(request: NextRequest): Locale {
   return DEFAULT_LOCALE;
 }
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   for (const locale of SUPPORTED_LOCALES) {

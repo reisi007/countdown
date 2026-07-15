@@ -10,13 +10,14 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "lint": "next lint",
+    "test:e2e:ui": "playwright test --ui",
+    "lint": "eslint .",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "an-array-of-german-words": "^1.2.0",
     "express": "^4.21.0",
-    "next": "^15.0.0",
+    "next": "^16.2.10",
     "peer": "^1.0.0",
     "peerjs": "^1.5.5",
     "react": "^19.0.0",
@@ -24,6 +25,7 @@
     "word-list": "^4.1.0"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "^3.3.6",
     "@playwright/test": "^1.48.0",
     "@tailwindcss/postcss": "^4.0.0",
     "@types/express": "^5.0.0",
@@ -32,7 +34,7 @@
     "@types/react-dom": "^19.0.0",
     "daisyui": "^5.0.0",
     "eslint": "^9.0.0",
-    "eslint-config-next": "^15.0.0",
+    "eslint-config-next": "^16.2.10",
     "tailwindcss": "^4.0.0",
     "typescript": "^5.6.0",
     "vitest": "^2.1.0"
