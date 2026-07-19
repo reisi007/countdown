@@ -70,32 +70,12 @@ export default function MultiplayerLettersPage() {
   useEffect(() => { setIsHostFnRef.current = setIsHost; }, [setIsHost]);
   useEffect(() => { setHostNameFnRef.current = setHostName; }, [setHostName]);
 
-  function startTimer(peer: PeerManager) {
-    stopTimer();
-    setTimeRemaining(timerDuration);
-    if (timerDuration <= 0) return;
-    timerRef.current = setInterval(() => {
-      setTimeRemaining((prev) => {
-        const next = prev - 1;
-        if (next <= 0) {
-          stopTimer();
-          if (peerRef.current) endRound(peerRef.current);
-          return 0;
-        }
-        if (isHostRef.current) peer.broadcast({ type: "timer-sync", payload: next });
-        return next;
-      });
-    }, 1000);
-  }
-
-  function stopTimer() {
+  const stopTimer = useCallback(() => {
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
     }
-  }
-
-  useEffect(() => () => stopTimer(), []);
+  }, []);
 
   const endRound = useCallback((peer: PeerManager) => {
     stopTimer();
@@ -126,7 +106,27 @@ export default function MultiplayerLettersPage() {
     setSubmissions(sorted);
     setWinner(w);
     setPhase("finished");
-  }, [roomId]);
+  }, [roomId, stopTimer]);
+
+  const startTimer = useCallback((peer: PeerManager) => {
+    stopTimer();
+    setTimeRemaining(timerDuration);
+    if (timerDuration <= 0) return;
+    timerRef.current = setInterval(() => {
+      setTimeRemaining((prev) => {
+        const next = prev - 1;
+        if (next <= 0) {
+          stopTimer();
+          if (peerRef.current) endRound(peerRef.current);
+          return 0;
+        }
+        if (isHostRef.current) peer.broadcast({ type: "timer-sync", payload: next });
+        return next;
+      });
+    }, 1000);
+  }, [timerDuration, endRound, stopTimer, peerRef]);
+
+  useEffect(() => () => stopTimer(), [stopTimer]);
 
   function submitWord() {
     const word = playerWord.trim().toUpperCase();
@@ -279,7 +279,7 @@ export default function MultiplayerLettersPage() {
         }
       }
     },
-    [roomId, timerDuration, endRound],
+    [roomId, timerDuration, endRound, startTimer, stopTimer],
   );
 
   useEffect(() => {

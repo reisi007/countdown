@@ -18,11 +18,6 @@ const CONSONANTS = [
   "N", "P", "Q", "R", "S", "T", "V", "W", "X", "Y", "Z",
 ];
 
-const UMLAUT_MAP: Record<string, string> = {
-  "\u00C4": "AE", "\u00D6": "OE", "\u00DC": "UE", "\u00DF": "SS",
-  "\u00E4": "AE", "\u00F6": "OE", "\u00FC": "UE",
-};
-
 const MAX_VOWELS = 5;
 const MAX_CONSONANTS = 6;
 const TOTAL_TILES = 9;

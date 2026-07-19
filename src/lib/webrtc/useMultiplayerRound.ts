@@ -79,7 +79,7 @@ export function useMultiplayerRound({ roomId, onMessage, onReady }: UseMultiplay
         });
 
         peerRef.current = peer;
-        await peer.connectToRoom(roomId);
+        await peer.connectToRoom();
         if (!mounted) return;
 
         const pid = peer.peerId;

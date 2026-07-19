@@ -2,6 +2,7 @@
   "name": "countdown",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "packageManager": "pnpm@11.13.1",
   "scripts": {
     "dev": "node server.js",
@@ -11,32 +12,32 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "lint": "eslint .",
+    "lint": "eslint . --max-warnings 0",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "an-array-of-german-words": "^1.2.0",
-    "express": "^4.21.0",
+    "express": "^5.2.1",
     "next": "^16.2.10",
     "peer": "^1.0.0",
     "peerjs": "^1.5.5",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
     "word-list": "^4.1.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.6",
-    "@playwright/test": "^1.48.0",
-    "@tailwindcss/postcss": "^4.0.0",
-    "@types/express": "^5.0.0",
-    "@types/node": "^26.0.0",
-    "@types/react": "^19.0.0",
-    "@types/react-dom": "^19.0.0",
-    "daisyui": "^5.0.0",
-    "eslint": "^9.0.0",
+    "@playwright/test": "^1.61.1",
+    "@tailwindcss/postcss": "^4.3.3",
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.1.1",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "daisyui": "^5.6.18",
+    "eslint": "^9.39.5",
     "eslint-config-next": "^16.2.10",
-    "tailwindcss": "^4.0.0",
-    "typescript": "^5.6.0",
-    "vitest": "^2.1.0"
+    "tailwindcss": "^4.3.3",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.10"
   }
 }

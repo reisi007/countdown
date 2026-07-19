@@ -109,7 +109,7 @@ function MiniCalculator({ locale }: { locale: Locale }) {
     setCalcResult(null);
   };
 
-  const evaluate = () => {
+  const evaluate = useCallback(() => {
     try {
       const cleaned = calcExpr.replace(/\s+/g, "");
       if (!cleaned) return;
@@ -118,7 +118,7 @@ function MiniCalculator({ locale }: { locale: Locale }) {
       setCalcResult(r);
       setCalcError(null);
     } catch { setCalcError(t.calcInvalid); setCalcResult(null); }
-  };
+  }, [calcExpr, t]);
 
   useEffect(() => {
     if (!open) return;
@@ -130,7 +130,7 @@ function MiniCalculator({ locale }: { locale: Locale }) {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [open]);
+  }, [open, evaluate]);
 
   useEffect(() => { inputRef.current?.focus(); }, [open]);
 
@@ -183,8 +183,6 @@ export default function SoloNumbersPage() {
   const [timeLeft, setTimeLeft] = useState(30);
 
   const tiles = game.tiles.map((t) => t.value);
-  const allNumbers = [...tiles, ...results.map((r) => r.value)];
-  const available = allNumbers.map((v, i) => ({ value: v, index: i, used: usedIndices.has(i) }));
 
   const handleNewRound = useCallback(() => {
     setGame(createNumbersGame());
@@ -206,6 +204,7 @@ export default function SoloNumbersPage() {
     if (showSolver) return;
     if (usedIndices.has(index)) return;
     setFeedback(null);
+    const allNumbers = [...game.tiles.map((t) => t.value), ...results.map((r) => r.value)];
 
     if (pendingOp) {
       const aIdx = selected[0];
@@ -243,7 +242,7 @@ export default function SoloNumbersPage() {
       setSelected([index]);
       setPendingOp(null);
     }
-  }, [game.phase, game.target, showSolver, usedIndices, pendingOp, selected, allNumbers, nextId]);
+  }, [game.phase, game.target, game.tiles, showSolver, usedIndices, pendingOp, selected, nextId, t, results]);
 
   const selectOp = useCallback((op: string) => {
     if (game.phase !== "playing") return;
@@ -292,7 +291,7 @@ export default function SoloNumbersPage() {
       setBestAttempt({ result: lastValue, diff });
       setFeedback(t.offByTry.replace("{diff}", String(diff)));
     }
-  }, [results, game.target]);
+  }, [results, game.target, t]);
 
   const handleSolve = useCallback(() => {
     setShowSolver(true);
@@ -308,7 +307,7 @@ export default function SoloNumbersPage() {
   }, [bestAttempt, results, game.target]);
 
   useEffect(() => {
-    if (game.phase === "playing") setTimeLeft(timerDuration);
+    if (game.phase === "playing") queueMicrotask(() => setTimeLeft(timerDuration));
   }, [game.phase, timerDuration]);
 
   useEffect(() => {

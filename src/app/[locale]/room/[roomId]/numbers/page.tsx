@@ -83,9 +83,11 @@ export default function MultiplayerNumbersPage() {
   const targetRef = useRef(0);
   const submissionsRef = useRef<Map<string, PlayerSubmission>>(new Map());
   const allTilesRef = useRef<number[]>([25, 50, 75, 100]);
+  const [largeRemaining, setLargeRemaining] = useState(4);
   const smallRef = useRef<number[]>([
     1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10,
   ]);
+  const [smallRemaining, setSmallRemaining] = useState(20);
   const isHostRef = useRef(false);
   const playerCountRef = useRef(1);
   const myPeerIdRef = useRef<string | null>(null);
@@ -107,30 +109,12 @@ export default function MultiplayerNumbersPage() {
   useEffect(() => { setIsHostFnRef.current = setIsHost; }, [setIsHost]);
   useEffect(() => { setHostNameFnRef.current = setHostName; }, [setHostName]);
 
-  function startTimer(peer: PeerManager) {
-    stopTimer();
-    setTimeRemaining(timerDuration);
-    if (timerDuration <= 0) return;
-    timerRef.current = setInterval(() => {
-      setTimeRemaining((prev) => {
-        const next = prev - 1;
-        if (next <= 0) {
-          stopTimer();
-          if (peerRef.current) endRound(peerRef.current);
-          return 0;
-        }
-        if (isHostRef.current) peer.broadcast({ type: "timer-sync", payload: next });
-        return next;
-      });
-    }, 1000);
-  }
-
-  function stopTimer() {
+  const stopTimer = useCallback(() => {
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
     }
-  }
+  }, []);
 
   const endRound = useCallback((peer: PeerManager | null) => {
     const p = peer ?? peerRef.current;
@@ -148,7 +132,25 @@ export default function MultiplayerNumbersPage() {
     }
 
     setPhase("finished");
-  }, []);
+  }, [peerRef, stopTimer]);
+
+  const startTimer = useCallback((peer: PeerManager) => {
+    stopTimer();
+    setTimeRemaining(timerDuration);
+    if (timerDuration <= 0) return;
+    timerRef.current = setInterval(() => {
+      setTimeRemaining((prev) => {
+        const next = prev - 1;
+        if (next <= 0) {
+          stopTimer();
+          if (peerRef.current) endRound(peerRef.current);
+          return 0;
+        }
+        if (isHostRef.current) peer.broadcast({ type: "timer-sync", payload: next });
+        return next;
+      });
+    }, 1000);
+  }, [timerDuration, endRound, stopTimer, peerRef]);
 
   const submitResult = useCallback(
     (value: number, diff: number) => {
@@ -186,7 +188,7 @@ export default function MultiplayerNumbersPage() {
         peer.broadcast({ type: "num-submitted", payload: sub });
       }
     },
-    [timerDuration, endRound],
+    [timerDuration, endRound, peerRef],
   );
 
   const handleFinish = useCallback(() => {
@@ -211,12 +213,11 @@ export default function MultiplayerNumbersPage() {
     submitResult(bestAttempt.result, bestAttempt.diff);
   }, [bestAttempt, submitResult]);
 
-  const allNumbers = [...tiles, ...results.map((r) => r.value)];
-
   const selectNumber = useCallback(
     (index: number) => {
       if (phase !== "playing") return;
       if (usedIndices.has(index)) return;
+      const allNumbers = [...tiles, ...results.map((r) => r.value)];
       setFeedback(null);
 
       if (pendingOp) {
@@ -278,7 +279,7 @@ export default function MultiplayerNumbersPage() {
         setPendingOp(null);
       }
     },
-    [phase, usedIndices, pendingOp, selected, allNumbers, nextId, target, timerDuration, t, handleFinish],
+    [phase, usedIndices, pendingOp, selected, tiles, results, nextId, target, t, handleFinish],
   );
 
   const selectOp = useCallback(
@@ -314,31 +315,7 @@ export default function MultiplayerNumbersPage() {
     setFeedback(null);
   }, []);
 
-  function drawLarge() {
-    if (!isHost || tilesRef.current.length >= 6 || allTilesRef.current.length === 0) return;
-    const bigs = allTilesRef.current;
-    const idx = Math.floor(Math.random() * bigs.length);
-    const val = bigs[idx];
-    allTilesRef.current = bigs.filter((_, i) => i !== idx);
-    const newTiles = [...tilesRef.current, val];
-    tilesRef.current = newTiles;
-    setTiles(newTiles);
-    if (newTiles.length >= 6) completeTiles();
-  }
-
-  function drawSmall() {
-    if (!isHost || tilesRef.current.length >= 6 || smallRef.current.length === 0) return;
-    const smalls = smallRef.current;
-    const idx = Math.floor(Math.random() * smalls.length);
-    const val = smalls[idx];
-    smallRef.current = smalls.filter((_, i) => i !== idx);
-    const newTiles = [...tilesRef.current, val];
-    tilesRef.current = newTiles;
-    setTiles(newTiles);
-    if (newTiles.length >= 6) completeTiles();
-  }
-
-  function completeTiles() {
+  const completeTiles = useCallback(() => {
     const t = Math.floor(Math.random() * 899) + 101;
     targetRef.current = t;
     setTarget(t);
@@ -362,7 +339,33 @@ export default function MultiplayerNumbersPage() {
       });
       if (timerDuration > 0) startTimer(peerRef.current);
     }
-  }
+  }, [timerDuration, startTimer, peerRef]);
+
+  const drawLarge = useCallback(() => {
+    if (!isHost || tilesRef.current.length >= 6 || allTilesRef.current.length === 0) return;
+    const bigs = allTilesRef.current;
+    const idx = Math.floor(Math.random() * bigs.length);
+    const val = bigs[idx];
+    allTilesRef.current = bigs.filter((_, i) => i !== idx);
+    setLargeRemaining(allTilesRef.current.length);
+    const newTiles = [...tilesRef.current, val];
+    tilesRef.current = newTiles;
+    setTiles(newTiles);
+    if (newTiles.length >= 6) completeTiles();
+  }, [isHost, completeTiles]);
+
+  const drawSmall = useCallback(() => {
+    if (!isHost || tilesRef.current.length >= 6 || smallRef.current.length === 0) return;
+    const smalls = smallRef.current;
+    const idx = Math.floor(Math.random() * smalls.length);
+    const val = smalls[idx];
+    smallRef.current = smalls.filter((_, i) => i !== idx);
+    setSmallRemaining(smallRef.current.length);
+    const newTiles = [...tilesRef.current, val];
+    tilesRef.current = newTiles;
+    setTiles(newTiles);
+    if (newTiles.length >= 6) completeTiles();
+  }, [isHost, completeTiles]);
 
   const handleMessage = useCallback(
     (msg: PeerMessage, peer: PeerManager) => {
@@ -443,14 +446,14 @@ export default function MultiplayerNumbersPage() {
         }
       }
     },
-    [timerDuration, endRound],
+    [timerDuration, endRound, startTimer, stopTimer],
   );
 
   useEffect(() => {
     realHandlerRef.current = handleMessage;
   }, [handleMessage]);
 
-  useEffect(() => () => stopTimer(), []);
+  useEffect(() => () => stopTimer(), [stopTimer]);
 
   if (error) {
     return (
@@ -495,10 +498,10 @@ export default function MultiplayerNumbersPage() {
               isHost={isHost}
               onPickLarge={drawLarge}
               onPickSmall={drawSmall}
-              canPickLarge={tiles.length < 6 && allTilesRef.current.length > 0}
-              canPickSmall={tiles.length < 6 && smallRef.current.length > 0}
-              largeRemaining={allTilesRef.current.length}
-              smallRemaining={smallRef.current.length}
+              canPickLarge={tiles.length < 6 && largeRemaining > 0}
+              canPickSmall={tiles.length < 6 && smallRemaining > 0}
+              largeRemaining={largeRemaining}
+              smallRemaining={smallRemaining}
               hostName={hostName}
             />
           )}

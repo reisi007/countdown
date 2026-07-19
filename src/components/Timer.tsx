@@ -8,7 +8,9 @@ export function Timer({ timeRemaining, totalTime = 30, onTimeUp }: {
   onTimeUp?: () => void;
 }) {
   const onTimeUpRef = useRef(onTimeUp);
-  onTimeUpRef.current = onTimeUp;
+  useEffect(() => {
+    onTimeUpRef.current = onTimeUp;
+  }, [onTimeUp]);
 
   useEffect(() => {
     if (timeRemaining <= 0 && onTimeUpRef.current) {

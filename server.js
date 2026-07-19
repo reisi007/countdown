@@ -1,7 +1,8 @@
-const { createServer } = require("http");
-const { URL } = require("url");
-const next = require("next");
-const { ExpressPeerServer } = require("peer");
+import { createServer } from "http";
+import { URL } from "url";
+import next from "next";
+import { ExpressPeerServer } from "peer";
+import express from "express";
 
 const dev = process.env.NODE_ENV !== "production";
 const hostname = "0.0.0.0";
@@ -12,7 +13,6 @@ const handle = app.getRequestHandler();
 
 app.prepare().then(() => {
   const upgradeHandler = app.getUpgradeHandler();
-  const express = require("express");
   const server = express();
 
   const httpServer = createServer(server);
@@ -41,7 +41,7 @@ app.prepare().then(() => {
     }
   });
 
-  server.all("*", (req, res) => {
+  server.all("/{*splat}", (req, res) => {
     if (req.url?.startsWith("/signaling")) return;
     handle(req, res);
   });

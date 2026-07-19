@@ -44,6 +44,8 @@ export default function MultiplayerConundrumPage() {
   const [solvedByName, setSolvedByName] = useState("");
   const [guess, setGuess] = useState("");
   const [guessError, setGuessError] = useState<string | null>(null);
+  const [hasBuzzed, setHasBuzzed] = useState(false);
+  const [buzzerId, setBuzzerId] = useState<string | null>(null);
 
   const roundTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const answerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -64,13 +66,84 @@ export default function MultiplayerConundrumPage() {
     phaseRef.current = phase;
   }, [phase]);
 
+  const { peerRef, isHost, setIsHost, myPeerId, myNickname, error } = useMultiplayerRound({
+    roomId,
+    onMessage: (msg, peer) => realHandlerRef.current(msg, peer),
+    onReady: (round) => {
+      if (round.isHost) startRound(round.peer);
+    },
+  });
+
+  const clearAllTimers = useCallback(() => {
+    if (roundTimerRef.current) {
+      clearInterval(roundTimerRef.current);
+      roundTimerRef.current = null;
+    }
+    if (answerTimerRef.current) {
+      clearTimeout(answerTimerRef.current);
+      answerTimerRef.current = null;
+    }
+  }, []);
+
+  const stopRoundTimer = useCallback(() => {
+    if (roundTimerRef.current) {
+      clearInterval(roundTimerRef.current);
+      roundTimerRef.current = null;
+    }
+  }, []);
+
+  const startAnswerTimer = useCallback((peer: PeerManager) => {
+    if (answerTimerRef.current) clearTimeout(answerTimerRef.current);
+
+    answerTimerRef.current = setTimeout(() => {
+      clearAllTimers();
+      roundActiveRef.current = false;
+      peer.broadcast({
+        type: "conundrum-result",
+        payload: {
+          peerId: buzzerIdRef.current,
+          guess: "",
+          correct: false,
+          nickname: buzzerName,
+          answer: answerRef.current,
+        },
+      });
+    }, BUZZER_TIMEOUT * 1000);
+  }, [buzzerName, clearAllTimers]);
+
+  const startRoundTimer = useCallback(() => {
+    clearAllTimers();
+    setTimeRemaining(ROUND_TIMEOUT);
+
+    const peer = peerRef.current;
+    roundTimerRef.current = setInterval(() => {
+      setTimeRemaining((prev) => {
+        const next = prev - 1;
+        if (next <= 0) {
+          if (peer && isHostRef.current) {
+            roundActiveRef.current = false;
+            peer.broadcast({ type: "conundrum-timeout", payload: { answer: answerRef.current } });
+          }
+          clearAllTimers();
+          return 0;
+        }
+        if (peer && isHostRef.current) {
+          peer.broadcast({ type: "timer-sync", payload: next });
+        }
+        return next;
+      });
+    }, 1000);
+  }, [clearAllTimers, peerRef])
+
   const startRound = useCallback((peer: PeerManager) => {
     const word = getConundrumWord(locale);
     const scrambledWord = scrambleWord(word);
 
     answerRef.current = word;
     roundActiveRef.current = true;
+    setBuzzerId(null);
     buzzerIdRef.current = null;
+    setHasBuzzed(false);
     hasBuzzedRef.current = false;
 
     setScrambled(scrambledWord);
@@ -81,13 +154,13 @@ export default function MultiplayerConundrumPage() {
     setGuess("");
     setGuessError(null);
     setPhase("playing");
-    startRoundTimer(peer);
+    startRoundTimer();
 
     peer.broadcast({
       type: "conundrum-start",
       payload: { scrambled: scrambledWord },
     });
-  }, [locale]);
+  }, [locale, startRoundTimer]);
 
   const shuffleScramble = useCallback((peer: PeerManager) => {
     if (!isHostRef.current || !originalScrambledRef.current) return;
@@ -120,7 +193,9 @@ export default function MultiplayerConundrumPage() {
         const payload = msg.payload as { scrambled: string };
         setScrambled(payload.scrambled);
         originalScrambledRef.current = payload.scrambled;
+        setBuzzerId(null);
         buzzerIdRef.current = null;
+        setHasBuzzed(false);
         hasBuzzedRef.current = false;
         roundActiveRef.current = true;
         setBuzzerName("");
@@ -129,7 +204,7 @@ export default function MultiplayerConundrumPage() {
         setGuess("");
         setGuessError(null);
         setPhase("playing");
-        startRoundTimer(peer);
+        startRoundTimer();
         break;
       }
       case "conundrum-shuffle": {
@@ -141,6 +216,7 @@ export default function MultiplayerConundrumPage() {
         if (!roundActiveRef.current) return;
         const buzz = msg.payload as BuzzEntry;
         if (isHostRef.current && buzzerIdRef.current === null) {
+          setBuzzerId(buzz.peerId);
           buzzerIdRef.current = buzz.peerId;
           setBuzzerName(buzz.nickname);
           setPhase("buzzed");
@@ -149,13 +225,14 @@ export default function MultiplayerConundrumPage() {
             type: "buzzer-granted",
             payload: { peerId: buzz.peerId, nickname: buzz.nickname },
           });
-          startAnswerTimer(peer, buzz.peerId);
+          startAnswerTimer(peer);
         }
         break;
       }
       case "buzzer-granted": {
         if (!roundActiveRef.current) return;
         const granted = msg.payload as { peerId: string; nickname: string };
+        setBuzzerId(granted.peerId);
         buzzerIdRef.current = granted.peerId;
         setBuzzerName(granted.nickname);
         setPhase("buzzed");
@@ -163,7 +240,7 @@ export default function MultiplayerConundrumPage() {
         if (granted.peerId === myPeerIdRef.current) {
           setPhase("answering");
           setTimeRemaining(BUZZER_TIMEOUT);
-          startAnswerTimer(peer, granted.peerId);
+          startAnswerTimer(peer);
         }
         break;
       }
@@ -222,15 +299,7 @@ export default function MultiplayerConundrumPage() {
         break;
       }
     }
-  }, [startRound]);
-
-  const { peerRef, isHost, setIsHost, myPeerId, myNickname, error } = useMultiplayerRound({
-    roomId,
-    onMessage: (msg, peer) => realHandlerRef.current(msg, peer),
-    onReady: (round) => {
-      if (round.isHost) startRound(round.peer);
-    },
-  });
+  }, [startRound, startAnswerTimer, startRoundTimer, stopRoundTimer, clearAllTimers]);
 
   useEffect(() => {
     realHandlerRef.current = handleMessage;
@@ -244,71 +313,11 @@ export default function MultiplayerConundrumPage() {
   useEffect(() => { myNicknameRef.current = myNickname; }, [myNickname]);
   useEffect(() => { setIsHostFnRef.current = setIsHost; }, [setIsHost]);
 
-  function startRoundTimer(_peer: PeerManager) {
-    clearAllTimers();
-    setTimeRemaining(ROUND_TIMEOUT);
-
-    const peer = peerRef.current;
-    roundTimerRef.current = setInterval(() => {
-      setTimeRemaining((prev) => {
-        const next = prev - 1;
-        if (next <= 0) {
-          if (peer && isHostRef.current) {
-            roundActiveRef.current = false;
-            peer.broadcast({ type: "conundrum-timeout", payload: { answer: answerRef.current } });
-          }
-          clearAllTimers();
-          return 0;
-        }
-        if (peer && isHostRef.current) {
-          peer.broadcast({ type: "timer-sync", payload: next });
-        }
-        return next;
-      });
-    }, 1000);
-  }
-
-  function stopRoundTimer() {
-    if (roundTimerRef.current) {
-      clearInterval(roundTimerRef.current);
-      roundTimerRef.current = null;
-    }
-  }
-
-  function startAnswerTimer(peer: PeerManager, _buzzerPeerId: string) {
-    if (answerTimerRef.current) clearTimeout(answerTimerRef.current);
-
-    answerTimerRef.current = setTimeout(() => {
-      clearAllTimers();
-      roundActiveRef.current = false;
-      peer.broadcast({
-        type: "conundrum-result",
-        payload: {
-          peerId: buzzerIdRef.current,
-          guess: "",
-          correct: false,
-          nickname: buzzerName,
-          answer: answerRef.current,
-        },
-      });
-    }, BUZZER_TIMEOUT * 1000);
-  }
-
-  function clearAllTimers() {
-    if (roundTimerRef.current) {
-      clearInterval(roundTimerRef.current);
-      roundTimerRef.current = null;
-    }
-    if (answerTimerRef.current) {
-      clearTimeout(answerTimerRef.current);
-      answerTimerRef.current = null;
-    }
-  }
-
   function buzz() {
     const peer = peerRef.current;
     if (!peer || !roundActiveRef.current || hasBuzzedRef.current) return;
 
+    setHasBuzzed(true);
     hasBuzzedRef.current = true;
 
     const entry: BuzzEntry = {
@@ -384,9 +393,9 @@ export default function MultiplayerConundrumPage() {
           timeRemaining={timeRemaining}
           timerDuration={phase === "answering" ? BUZZER_TIMEOUT : ROUND_TIMEOUT}
           onBuzz={buzz}
-          hasBuzzed={hasBuzzedRef.current}
+          hasBuzzed={hasBuzzed}
           buzzerName={buzzerName}
-          isBuzzer={buzzerIdRef.current === myPeerIdRef.current}
+          isBuzzer={buzzerId === myPeerId}
           answerReveal={answerReveal}
           solvedByName={solvedByName}
           showBuzzButton={phase === "playing"}

@@ -1,8 +1,5 @@
 import { describe, it, expect } from "vitest";
 import {
-  createNumbersGame,
-  addLargeNumber,
-  addSmallNumber,
   solveNumbers,
   computeUsedIndices,
   type NumbersTileResult,
@@ -114,7 +111,6 @@ describe("allPlayersSubmitted", () => {
 
 describe("computeUsedIndices chaining", () => {
   it("integrates with auto-submit: chain to exact target marks exact match", () => {
-    const tiles = [25, 100, 50, 5, 4, 75];
     const target = 125;
 
     const step1: NumbersTileResult = { id: 1, value: 9, a: 5, b: 4, op: "+", aIdx: 3, bIdx: 4 };

@@ -12,7 +12,6 @@ import {
   canAddConsonant,
   getUsedTileIndices,
   shuffleTiles,
-  resetTiles,
   type LettersGameState,
   type LetterTile,
 } from "@/lib/game/letters";
@@ -86,16 +85,18 @@ export default function SoloLettersPage() {
   }, [game.phase, timerEnabled, finishRound]);
 
   useEffect(() => {
-    setTimeLeft(30);
-    setLongestWord(null);
-    setAttempts([]);
+    queueMicrotask(() => {
+      setTimeLeft(30);
+      setLongestWord(null);
+      setAttempts([]);
+    });
   }, [game.tiles]);
 
   useEffect(() => {
     if (game.phase !== "scoring" || game.tiles.length === 0) return;
     if (longestWord !== null || searching) return;
 
-    setSearching(true);
+    queueMicrotask(() => setSearching(true));
     const tileLetters = game.tiles.map((tile) => tile.letter);
 
     fetch("/api/validate", {
@@ -183,7 +184,7 @@ export default function SoloLettersPage() {
             locale={locale}
             tiles={displayTiles}
             usedIndices={getUsedTileIndices(displayTiles, playerWord)}
-            phase={game.phase === "playing" ? "playing" : game.phase as any}
+            phase={game.phase === "playing" ? "playing" : game.phase}
             drawMode="solo"
             onDrawVowel={() => handleTileSelection("vowel")}
             onDrawConsonant={() => handleTileSelection("consonant")}

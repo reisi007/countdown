@@ -1,5 +1,6 @@
 import fs from "fs";
 import wordListPath from "word-list";
+import germanWords from "an-array-of-german-words";
 
 const dictionaryCache: Map<string, Set<string>> = new Map();
 
@@ -27,8 +28,7 @@ function loadEnglishWords(): Set<string> {
 }
 
 function loadGermanWords(): Set<string> {
-  const words: string[] = require("an-array-of-german-words");
-  return new Set(words.map((w) => w.toUpperCase()));
+  return new Set((germanWords as string[]).map((w) => w.toUpperCase()));
 }
 
 export function resolveLocale(locale: string): string {

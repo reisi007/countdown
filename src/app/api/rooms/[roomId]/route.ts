@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createRoom, getRoom, updateRoom, pruneStalePlayers } from "@/lib/db";
-import type { PlayerRecord, Room } from "@/lib/db";
+import type { PlayerRecord } from "@/lib/db";
 
 function pruneStale(roomId: string) {
   const room = getRoom(roomId);

@@ -46,7 +46,7 @@ export default function SoloConundrumPage() {
   const [guess, setGuess] = useState("");
   const [timeLeft, setTimeLeft] = useState(30);
   const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [, setLoading] = useState(false);
   const [started, setStarted] = useState(false);
   const [timerEnabled, setTimerEnabled] = useState(false);
   const [timerDuration, setTimerDuration] = useState(30);
@@ -86,7 +86,7 @@ export default function SoloConundrumPage() {
 
   useEffect(() => {
     if (!started) return;
-    initRound();
+    queueMicrotask(initRound);
   }, [started, initRound]);
 
   useEffect(() => {

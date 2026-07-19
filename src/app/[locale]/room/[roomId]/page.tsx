@@ -41,14 +41,15 @@ export default function RoomPage() {
   const [timerDuration, setTimerDuration] = useState(30);
   const [editingNickname, setEditingNickname] = useState(false);
   const [nicknameInput, setNicknameInput] = useState("");
-  const [scores, setScores] = useState<Record<string, number>>({});
+  const [, setScores] = useState<Record<string, number>>({});
+  const [myPeerId, setMyPeerId] = useState<string | null>(null);
 
   const peerRef = useRef<PeerManager | null>(null);
   const hostIdRef = useRef<string | null>(null);
   const playersRef = useRef<PlayerEntry[]>([]);
   const nicknamesRef = useRef<NicknameMap>({});
 
-  const isHost = hostId !== null && peerRef.current !== null && hostId === peerRef.current.peerId;
+  const isHost = hostId !== null && myPeerId !== null && hostId === myPeerId;
 
   const updateHost = useCallback((newHostId: string | null) => {
     hostIdRef.current = newHostId;
@@ -64,6 +65,12 @@ export default function RoomPage() {
     updateHost(elected);
   }, [updateHost]);
 
+  const updatePlayerState = useCallback((updatedPlayers: PlayerEntry[]) => {
+    playersRef.current = updatedPlayers;
+    setPlayers(updatedPlayers);
+    recalculateHost(updatedPlayers);
+  }, [recalculateHost]);
+
   useEffect(() => {
     if (roomId === "new") {
       const newId = generateRoomId();
@@ -73,6 +80,110 @@ export default function RoomPage() {
 
     let peer: PeerManager;
     let disposed = false;
+
+    function broadcastPlayerList(peer: PeerManager, playerList: PlayerEntry[]) {
+      const list = playerList.map((p) => ({
+        peerId: p.peerId,
+        joinedAt: p.joinedAt,
+        nickname: p.nickname,
+      }));
+      peer.broadcast({ type: "player-list", payload: list });
+    }
+
+    async function handlePeerJoin(peerId: string, peer: PeerManager) {
+      const current = playersRef.current;
+      if (current.some((p) => p.peerId === peerId)) return;
+
+      const nickname = nicknamesRef.current[peerId] ?? `Player-${peerId.substring(0, 4)}`;
+      const newPlayer: PlayerEntry = {
+        peerId,
+        joinedAt: Date.now(),
+        nickname,
+      };
+
+      const updated = [...current, newPlayer];
+      updatePlayerState(updated);
+      broadcastPlayerList(peer, updated);
+
+      await fetch(`/api/rooms/${roomId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "join",
+          player: { peerId, joinedAt: newPlayer.joinedAt, nickname },
+        }),
+      }).catch(() => {});
+    }
+
+    function handlePeerLeave(peerId: string) {
+      const updated = playersRef.current.filter((p) => p.peerId !== peerId);
+      updatePlayerState(updated);
+
+      const peer = peerRef.current;
+      if (peer) {
+        broadcastPlayerList(peer, updated);
+      }
+
+      fetch(`/api/rooms/${roomId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "leave", peerId }),
+      }).catch(() => {});
+    }
+
+    function handleIncomingMessage(msg: PeerMessage, peer: PeerManager) {
+      if (!msg.type) return;
+
+      switch (msg.type) {
+        case "player-list": {
+          const list = msg.payload as PlayerRecord[];
+          const entries: PlayerEntry[] = list.map((p) => ({
+            peerId: p.peerId,
+            joinedAt: p.joinedAt,
+            nickname: p.nickname,
+          }));
+          list.forEach((p) => {
+            nicknamesRef.current[p.peerId] = p.nickname;
+          });
+          const merged = new Map<string, PlayerEntry>();
+          for (const e of entries) merged.set(e.peerId, e);
+          for (const e of playersRef.current) {
+            if (!merged.has(e.peerId)) {
+              merged.set(e.peerId, e);
+            }
+          }
+          const mergedList = Array.from(merged.values());
+          updatePlayerState(mergedList);
+          break;
+        }
+        case "request-player-list": {
+          broadcastPlayerList(peer, playersRef.current);
+          break;
+        }
+        case "game-start": {
+          const data = msg.payload as { gameType: GameType; timerEnabled: boolean; timerDuration: number };
+          sessionStorage.setItem(`timer_${roomId}`, String(data.timerEnabled ? data.timerDuration : 0));
+          router.push(`/${locale}/room/${roomId}/${data.gameType}`);
+          break;
+        }
+        case "scores-update": {
+          const s = msg.payload as Record<string, number>;
+          sessionStorage.setItem(`scores_${roomId}`, JSON.stringify(s));
+          setScores(s);
+          break;
+        }
+        case "nickname": {
+          const { peerId: pid, nickname } = msg.payload as { peerId: string; nickname: string };
+          if (playersRef.current.some((p) => p.nickname === nickname && p.peerId !== pid)) break;
+          nicknamesRef.current[pid] = nickname;
+          const updated = playersRef.current.map((p) =>
+            p.peerId === pid ? { ...p, nickname } : p,
+          );
+          updatePlayerState(updated);
+          break;
+        }
+      }
+    }
 
     async function init() {
       try {
@@ -97,8 +208,9 @@ export default function RoomPage() {
         });
 
         peerRef.current = peer;
+        setMyPeerId(peer.peerId);
 
-        await peer.connectToRoom(roomId);
+        await peer.connectToRoom();
         if (disposed) return;
 
         setConnected(true);
@@ -191,117 +303,7 @@ export default function RoomPage() {
         peerRef.current = null;
       }
     };
-  }, [roomId, locale, router, recalculateHost, updateHost]);
-
-  function updatePlayerState(updatedPlayers: PlayerEntry[]) {
-    playersRef.current = updatedPlayers;
-    setPlayers(updatedPlayers);
-    recalculateHost(updatedPlayers);
-  }
-
-  function broadcastPlayerList(peer: PeerManager, playerList: PlayerEntry[]) {
-    const list = playerList.map((p) => ({
-      peerId: p.peerId,
-      joinedAt: p.joinedAt,
-      nickname: p.nickname,
-    }));
-    peer.broadcast({ type: "player-list", payload: list });
-  }
-
-  async function handlePeerJoin(peerId: string, peer: PeerManager) {
-    const current = playersRef.current;
-    if (current.some((p) => p.peerId === peerId)) return;
-
-    const nickname = nicknamesRef.current[peerId] ?? `Player-${peerId.substring(0, 4)}`;
-    const newPlayer: PlayerEntry = {
-      peerId,
-      joinedAt: Date.now(),
-      nickname,
-    };
-
-    const updated = [...current, newPlayer];
-    updatePlayerState(updated);
-    broadcastPlayerList(peer, updated);
-
-    await fetch(`/api/rooms/${roomId}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "join",
-        player: { peerId, joinedAt: newPlayer.joinedAt, nickname },
-      }),
-    }).catch(() => {});
-  }
-
-  function handlePeerLeave(peerId: string) {
-    const updated = playersRef.current.filter((p) => p.peerId !== peerId);
-    updatePlayerState(updated);
-
-    const peer = peerRef.current;
-    if (peer) {
-      broadcastPlayerList(peer, updated);
-    }
-
-    fetch(`/api/rooms/${roomId}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "leave", peerId }),
-    }).catch(() => {});
-  }
-
-  function handleIncomingMessage(msg: PeerMessage, peer: PeerManager) {
-    if (!msg.type) return;
-
-    switch (msg.type) {
-      case "player-list": {
-        const list = msg.payload as PlayerRecord[];
-        const entries: PlayerEntry[] = list.map((p) => ({
-          peerId: p.peerId,
-          joinedAt: p.joinedAt,
-          nickname: p.nickname,
-        }));
-        list.forEach((p) => {
-          nicknamesRef.current[p.peerId] = p.nickname;
-        });
-        const merged = new Map<string, PlayerEntry>();
-        for (const e of entries) merged.set(e.peerId, e);
-        for (const e of playersRef.current) {
-          if (!merged.has(e.peerId)) {
-            merged.set(e.peerId, e);
-          }
-        }
-        const mergedList = Array.from(merged.values());
-        updatePlayerState(mergedList);
-        break;
-      }
-      case "request-player-list": {
-        broadcastPlayerList(peer, playersRef.current);
-        break;
-      }
-      case "game-start": {
-        const data = msg.payload as { gameType: GameType; timerEnabled: boolean; timerDuration: number };
-        sessionStorage.setItem(`timer_${roomId}`, String(data.timerEnabled ? data.timerDuration : 0));
-        router.push(`/${locale}/room/${roomId}/${data.gameType}`);
-        break;
-      }
-      case "scores-update": {
-        const s = msg.payload as Record<string, number>;
-        sessionStorage.setItem(`scores_${roomId}`, JSON.stringify(s));
-        setScores(s);
-        break;
-      }
-      case "nickname": {
-        const { peerId: pid, nickname } = msg.payload as { peerId: string; nickname: string };
-        if (playersRef.current.some((p) => p.nickname === nickname && p.peerId !== pid)) break;
-        nicknamesRef.current[pid] = nickname;
-        const updated = playersRef.current.map((p) =>
-          p.peerId === pid ? { ...p, nickname } : p,
-        );
-        updatePlayerState(updated);
-        break;
-      }
-    }
-  }
+  }, [roomId, locale, router, recalculateHost, updateHost, updatePlayerState]);
 
   const changeNickname = useCallback((newName: string) => {
     const peer = peerRef.current;
@@ -318,7 +320,7 @@ export default function RoomPage() {
     updatePlayerState(updated);
     peer.broadcast({ type: "nickname", payload: { peerId: myPeerId, nickname: trimmed } });
     setEditingNickname(false);
-  }, [roomId]);
+  }, [roomId, updatePlayerState]);
 
   const avatarColor = (peerId: string) => {
     const colors = ["bg-primary", "bg-secondary", "bg-accent", "bg-info", "bg-success", "bg-warning", "bg-error"];
@@ -439,7 +441,7 @@ export default function RoomPage() {
               {players
                 .sort((a, b) => a.joinedAt - b.joinedAt)
                 .map((player) => {
-                  const isMe = peerRef.current?.peerId === player.peerId;
+                  const isMe = myPeerId === player.peerId;
                   return (
                     <li
                       key={player.peerId}

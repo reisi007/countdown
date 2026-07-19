@@ -144,7 +144,7 @@ export class PeerManager {
    * the first open. Handles "unavailable-id" by regenerating the id and retrying
    * automatically.
    */
-  connectToRoom(_roomId: string): Promise<void> {
+  connectToRoom(): Promise<void> {
     if (this.roomReady) return Promise.resolve();
 
     return new Promise<void>((resolve, reject) => {
