@@ -27,6 +27,9 @@ export type ConundrumGameProps = {
   onNewRound?: () => void;
   showNewRound?: boolean;
   backLink?: string;
+  onShuffle?: () => void;
+  onReset?: () => void;
+  canShuffle?: boolean;
 };
 
 const T: Record<string, {
@@ -50,6 +53,8 @@ const T: Record<string, {
   wrong: string;
   pressedBuzzer: string;
   isAnswering: string;
+  shuffle: string;
+  reset: string;
 }> = {
   "en-GB": {
     unscramble: "Unscramble:",
@@ -72,6 +77,8 @@ const T: Record<string, {
     wrong: "Wrong!",
     pressedBuzzer: "pressed the buzzer!",
     isAnswering: "is answering...",
+    shuffle: "Shuffle",
+    reset: "Reset",
   },
   "en-US": {
     unscramble: "Unscramble:",
@@ -94,6 +101,8 @@ const T: Record<string, {
     wrong: "Wrong!",
     pressedBuzzer: "pressed the buzzer!",
     isAnswering: "is answering...",
+    shuffle: "Shuffle",
+    reset: "Reset",
   },
   de: {
     unscramble: "Anagramm:",
@@ -116,6 +125,8 @@ const T: Record<string, {
     wrong: "Falsch!",
     pressedBuzzer: "hat den Buzzer gedr\u00fcckt!",
     isAnswering: "antwortet...",
+    shuffle: "Mischen",
+    reset: "Zur\u00fccksetzen",
   },
 };
 
@@ -141,6 +152,9 @@ export function ConundrumGame({
   onNewRound,
   showNewRound,
   backLink,
+  onShuffle,
+  onReset,
+  canShuffle = false,
 }: ConundrumGameProps) {
   const t = T[locale] ?? T["en-GB"];
 
@@ -168,9 +182,27 @@ export function ConundrumGame({
         phase === "solved" ||
         phase === "timeout") && (
         <>
+          {canShuffle && (
+            <div className="join">
+              <button
+                className="btn btn-secondary btn-sm join-item"
+                onClick={onShuffle}
+                disabled={!onShuffle}
+              >
+                {t.shuffle}
+              </button>
+              <button
+                className="btn btn-ghost btn-sm join-item"
+                onClick={onReset}
+                disabled={!onReset}
+              >
+                {t.reset}
+              </button>
+            </div>
+          )}
           <div className="text-center">
             <p className="text-sm text-base-content/60 mb-2">{t.unscramble}</p>
-            <div className="flex flex-wrap gap-2 justify-center max-w-lg">
+            <div className="flex flex-wrap gap-2 justify-center">
               {scrambled.split("").map((letter, i) => (
                 <kbd
                   key={i}

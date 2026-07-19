@@ -10,6 +10,8 @@ import {
   addVowel,
   addConsonant,
   canFormWord,
+  shuffleTiles,
+  resetTiles,
   type LetterTile,
 } from "@/lib/game/letters";
 
@@ -182,6 +184,22 @@ export default function MultiplayerLettersPage() {
     }
   }
 
+  function shuffleTileOrder(peer: PeerManager) {
+    if (!isHostRef.current || tilesRef.current.length === 0) return;
+    const reordered = shuffleTiles(tilesRef.current);
+    tilesRef.current = reordered;
+    setTiles(reordered);
+    peer.broadcast({ type: "tiles-order", payload: reordered });
+  }
+
+  function resetTileOrder(peer: PeerManager) {
+    if (!isHostRef.current || tilesRef.current.length === 0) return;
+    const reordered = resetTiles(tilesRef.current);
+    tilesRef.current = reordered;
+    setTiles(reordered);
+    peer.broadcast({ type: "tiles-order", payload: reordered });
+  }
+
   const handleMessage = useCallback(
     (msg: PeerMessage, peer: PeerManager) => {
       switch (msg.type) {
@@ -215,6 +233,12 @@ export default function MultiplayerLettersPage() {
           setTiles(final);
           setPhase("playing");
           startTimer(peer);
+          break;
+        }
+        case "tiles-order": {
+          const reordered = msg.payload as LetterTile[];
+          tilesRef.current = reordered;
+          setTiles(reordered);
           break;
         }
         case "timer-sync": {
@@ -331,6 +355,9 @@ export default function MultiplayerLettersPage() {
                 : null
             }
             hostName={hostName}
+            onShuffle={() => peerRef.current && shuffleTileOrder(peerRef.current)}
+            onReset={() => peerRef.current && resetTileOrder(peerRef.current)}
+            canShuffle={isHost && tiles.length > 0}
           />
         </div>
 

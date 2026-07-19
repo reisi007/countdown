@@ -89,3 +89,18 @@ export function getConundrumWord(locale: string): string {
 export function checkSolution(state: ConundrumState, guess: string): boolean {
   return guess.toUpperCase().trim() === state.answer;
 }
+
+export function shuffleScrambled(scrambled: string): string {
+  const chars = scrambled.split("");
+  for (let i = chars.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const tmp = chars[i];
+    chars[i] = chars[j];
+    chars[j] = tmp;
+  }
+  return chars.join("");
+}
+
+export function resetScrambled(_scrambled: string): string {
+  return _scrambled;
+}

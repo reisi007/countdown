@@ -11,7 +11,10 @@ import {
   canAddVowel,
   canAddConsonant,
   getUsedTileIndices,
+  shuffleTiles,
+  resetTiles,
   type LettersGameState,
+  type LetterTile,
 } from "@/lib/game/letters";
 import { LettersGame } from "@/components/LettersGame";
 import { SoloTimerSetup } from "@/components/SoloTimerSetup";
@@ -47,6 +50,7 @@ export default function SoloLettersPage() {
   const t = T[locale] ?? T["en-GB"];
 
   const [game, setGame] = useState<LettersGameState>(createLettersGame);
+  const [displayTiles, setDisplayTiles] = useState<LetterTile[]>([]);
   const [playerWord, setPlayerWord] = useState("");
   const [attempts, setAttempts] = useState<WordAttempt[]>([]);
   const [timeLeft, setTimeLeft] = useState(30);
@@ -118,12 +122,21 @@ export default function SoloLettersPage() {
       if (g.phase !== "drawing") return g;
       const next = type === "vowel" ? addVowel(g) : addConsonant(g);
       if (next.phase === "playing") setTimeLeft(timerDuration);
+      setDisplayTiles(next.tiles);
       return next;
     });
     setPlayerWord("");
     setLongestWord(null);
     setAttempts([]);
   }, [timerDuration]);
+
+  const handleShuffle = useCallback(() => {
+    setDisplayTiles((d) => shuffleTiles(d));
+  }, []);
+
+  const handleReset = useCallback(() => {
+    setDisplayTiles(game.tiles);
+  }, [game.tiles]);
 
   const handleSubmit = useCallback(() => {
     const word = playerWord.trim().toUpperCase();
@@ -136,6 +149,7 @@ export default function SoloLettersPage() {
 
   const handleNewRound = useCallback(() => {
     setGame(createLettersGame());
+    setDisplayTiles([]);
     setPlayerWord("");
     setTimeLeft(timerDuration);
     setLongestWord(null);
@@ -167,8 +181,8 @@ export default function SoloLettersPage() {
           )}
           <LettersGame
             locale={locale}
-            tiles={game.tiles}
-            usedIndices={getUsedTileIndices(game.tiles, playerWord)}
+            tiles={displayTiles}
+            usedIndices={getUsedTileIndices(displayTiles, playerWord)}
             phase={game.phase === "playing" ? "playing" : game.phase as any}
             drawMode="solo"
             onDrawVowel={() => handleTileSelection("vowel")}
@@ -187,6 +201,9 @@ export default function SoloLettersPage() {
             searching={searching}
             onNewRound={handleNewRound}
             onFinishRound={timerEnabled ? undefined : finishRound}
+            onShuffle={handleShuffle}
+            onReset={handleReset}
+            canShuffle={game.tiles.length > 0}
           />
         </div>
 

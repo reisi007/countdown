@@ -38,6 +38,9 @@ type LettersGameProps = {
   onNewRound?: () => void;
   onFinishRound?: () => void;
   hostName?: string;
+  onShuffle?: () => void;
+  onReset?: () => void;
+  canShuffle?: boolean;
 };
 
 const T: Record<string, Record<string, string>> = {
@@ -63,6 +66,8 @@ const T: Record<string, Record<string, string>> = {
     invalid: "Invalid",
     letters: "letters",
     yourWords: "Your words",
+    shuffle: "Shuffle",
+    reset: "Reset",
   },
   "en-US": {
     vowel: "Vowel",
@@ -86,6 +91,8 @@ const T: Record<string, Record<string, string>> = {
     invalid: "Invalid",
     letters: "letters",
     yourWords: "Your words",
+    shuffle: "Shuffle",
+    reset: "Reset",
   },
   de: {
     vowel: "Vokal",
@@ -109,6 +116,8 @@ const T: Record<string, Record<string, string>> = {
     invalid: "Ungültig",
     letters: "Buchstaben",
     yourWords: "Deine Wörter",
+    shuffle: "Mischen",
+    reset: "Zurücksetzen",
   },
 };
 
@@ -138,6 +147,9 @@ export function LettersGame({
   onNewRound,
   onFinishRound,
   hostName,
+  onShuffle,
+  onReset,
+  canShuffle = false,
 }: LettersGameProps) {
   const t = T[locale] ?? T["en-GB"];
 
@@ -156,6 +168,24 @@ export function LettersGame({
 
   return (
     <div className="flex flex-col items-center gap-6">
+      {canShuffle && (
+        <div className="join">
+          <button
+            className="btn btn-secondary btn-sm join-item"
+            onClick={onShuffle}
+            disabled={!onShuffle}
+          >
+            {t.shuffle}
+          </button>
+          <button
+            className="btn btn-ghost btn-sm join-item"
+            onClick={onReset}
+            disabled={!onReset}
+          >
+            {t.reset}
+          </button>
+        </div>
+      )}
       {phase === "drawing" && (
         <>
           <LetterBoard tiles={tileLetters} usedIndices={usedIndices} />

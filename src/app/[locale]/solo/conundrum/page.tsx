@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { checkSolution, type ConundrumState } from "@/lib/game/conundrum";
+import { checkSolution, shuffleScrambled, resetScrambled, type ConundrumState } from "@/lib/game/conundrum";
 import { ConundrumGame } from "@/components/ConundrumGame";
 import { SoloTimerSetup } from "@/components/SoloTimerSetup";
 
@@ -42,6 +42,7 @@ export default function SoloConundrumPage() {
   const t = T[locale] ?? T["en-GB"];
 
   const [state, setState] = useState<ConundrumState | null>(null);
+  const [displayScrambled, setDisplayScrambled] = useState("");
   const [guess, setGuess] = useState("");
   const [timeLeft, setTimeLeft] = useState(30);
   const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
@@ -67,12 +68,21 @@ export default function SoloConundrumPage() {
         phase: "scrambled",
         timeRemaining: data.timeRemaining || 30,
       });
+      setDisplayScrambled(data.scrambled);
     } catch {
       setState(null);
     } finally {
       setLoading(false);
     }
   }, [locale, timerDuration]);
+
+  const handleShuffle = useCallback(() => {
+    setDisplayScrambled((s) => shuffleScrambled(s));
+  }, []);
+
+  const handleReset = useCallback(() => {
+    if (state) setDisplayScrambled(resetScrambled(state.scrambled));
+  }, [state]);
 
   useEffect(() => {
     if (!started) return;
@@ -107,6 +117,7 @@ export default function SoloConundrumPage() {
   const handleNewRound = useCallback(() => {
     setStarted(false);
     setState(null);
+    setDisplayScrambled("");
     setFeedback(null);
     setGuess("");
   }, []);
@@ -152,7 +163,7 @@ export default function SoloConundrumPage() {
           ) : (
             <ConundrumGame
               locale={locale}
-              scrambled={state.scrambled}
+              scrambled={displayScrambled}
               phase={state.phase === "scrambled" ? "playing" : state.phase === "solved" ? "solved" : state.phase === "timeout" ? "timeout" : "waiting"}
               guess={guess}
               onGuessChange={(value) => setGuess(value.toUpperCase().replace(/[^A-Z\u00C4\u00D6\u00DC\u00DF]/g, ""))}
@@ -165,6 +176,9 @@ export default function SoloConundrumPage() {
               answerReveal={state.answer}
               feedback={feedback}
               backLink={`/${locale}/solo`}
+              onShuffle={handleShuffle}
+              onReset={handleReset}
+              canShuffle={state.phase === "scrambled"}
             />
           )}
         </div>

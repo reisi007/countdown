@@ -159,3 +159,18 @@ export function getUsedTileIndices(tiles: LetterTile[], word: string): Set<numbe
 export function getAvailableLetters(tiles: LetterTile[]): LetterTile[] {
   return tiles;
 }
+
+export function shuffleTiles(tiles: LetterTile[]): LetterTile[] {
+  const result = [...tiles];
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const tmp = result[i];
+    result[i] = result[j];
+    result[j] = tmp;
+  }
+  return result;
+}
+
+export function resetTiles(_tiles: LetterTile[]): LetterTile[] {
+  return [..._tiles];
+}

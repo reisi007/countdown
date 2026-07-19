@@ -9,6 +9,8 @@ import {
   checkSolution,
   getConundrumWord,
   scrambleWord,
+  shuffleScrambled,
+  resetScrambled,
   type ConundrumState,
 } from "@/lib/game/conundrum";
 
@@ -48,6 +50,7 @@ export default function MultiplayerConundrumPage() {
   const answerRef = useRef("");
   const buzzerIdRef = useRef<string | null>(null);
   const hasBuzzedRef = useRef(false);
+  const originalScrambledRef = useRef("");
   const roundActiveRef = useRef(false);
   const phaseRef = useRef<GamePhase>("waiting");
   const isHostRef = useRef(false);
@@ -71,6 +74,7 @@ export default function MultiplayerConundrumPage() {
     hasBuzzedRef.current = false;
 
     setScrambled(scrambledWord);
+    originalScrambledRef.current = scrambledWord;
     setBuzzerName("");
     setAnswerReveal("");
     setSolvedByName("");
@@ -84,6 +88,20 @@ export default function MultiplayerConundrumPage() {
       payload: { scrambled: scrambledWord },
     });
   }, [locale]);
+
+  const shuffleScramble = useCallback((peer: PeerManager) => {
+    if (!isHostRef.current || !originalScrambledRef.current) return;
+    const next = shuffleScrambled(scrambled);
+    setScrambled(next);
+    peer.broadcast({ type: "conundrum-shuffle", payload: { scrambled: next } });
+  }, [scrambled]);
+
+  const resetScramble = useCallback((peer: PeerManager) => {
+    if (!isHostRef.current || !originalScrambledRef.current) return;
+    const next = resetScrambled(originalScrambledRef.current);
+    setScrambled(next);
+    peer.broadcast({ type: "conundrum-shuffle", payload: { scrambled: next } });
+  }, []);
 
   const handleMessage = useCallback((msg: PeerMessage, peer: PeerManager) => {
     switch (msg.type) {
@@ -101,6 +119,7 @@ export default function MultiplayerConundrumPage() {
       case "conundrum-start": {
         const payload = msg.payload as { scrambled: string };
         setScrambled(payload.scrambled);
+        originalScrambledRef.current = payload.scrambled;
         buzzerIdRef.current = null;
         hasBuzzedRef.current = false;
         roundActiveRef.current = true;
@@ -111,6 +130,11 @@ export default function MultiplayerConundrumPage() {
         setGuessError(null);
         setPhase("playing");
         startRoundTimer(peer);
+        break;
+      }
+      case "conundrum-shuffle": {
+        const payload = msg.payload as { scrambled: string };
+        setScrambled(payload.scrambled);
         break;
       }
       case "buzz": {
@@ -367,6 +391,9 @@ export default function MultiplayerConundrumPage() {
           solvedByName={solvedByName}
           showBuzzButton={phase === "playing"}
           backLink={`/${locale}/room/${roomId}`}
+          onShuffle={() => peerRef.current && shuffleScramble(peerRef.current)}
+          onReset={() => peerRef.current && resetScramble(peerRef.current)}
+          canShuffle={isHost && (phase === "playing" || phase === "buzzed" || phase === "answering")}
         />
       </div>
     </div>
