@@ -288,7 +288,9 @@ export default function SoloNumbersPage() {
       setPlayerDiff(0);
       setGame((g) => ({ ...g, phase: "scoring" }));
     } else {
-      setBestAttempt({ result: lastValue, diff });
+      setBestAttempt((prev) =>
+        prev && prev.diff <= diff ? prev : { result: lastValue, diff },
+      );
       setFeedback(t.offByTry.replace("{diff}", String(diff)));
     }
   }, [results, game.target, t]);

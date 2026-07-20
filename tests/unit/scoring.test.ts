@@ -4,7 +4,9 @@ import {
   calculateNumbersScore,
   calculateConundrumScore,
   mergeScores,
+  keepBestSubmission,
   type Submission,
+  type BestComparable,
 } from "@/lib/game/scoring";
 
 describe("calculateLettersScore", () => {
@@ -219,5 +221,60 @@ describe("mergeScores", () => {
     const result = mergeScores(existing, round);
     expect(existing).toEqual({ alice: 10 });
     expect(result).toEqual({ alice: 15 });
+  });
+});
+
+describe("keepBestSubmission", () => {
+  it("stores the submission when the store is empty", () => {
+    const store = new Map<string, BestComparable>();
+    const sub: BestComparable = { peerId: "alice", diff: 3, result: 97, submittedAt: 100 };
+    keepBestSubmission(store, sub);
+    expect(store.get("alice")).toEqual(sub);
+  });
+
+  it("keeps the more accurate numbers submission when a worse one arrives later", () => {
+    const store = new Map<string, BestComparable>();
+    keepBestSubmission(store, { peerId: "alice", diff: 3, result: 97, submittedAt: 100 });
+    keepBestSubmission(store, { peerId: "alice", diff: 1, result: 99, submittedAt: 200 });
+    keepBestSubmission(store, { peerId: "alice", diff: 5, result: 95, submittedAt: 300 });
+    expect(store.get("alice")).toMatchObject({ diff: 1, result: 99 });
+  });
+
+  it("does not replace an exact match with a worse later submission", () => {
+    const store = new Map<string, BestComparable>();
+    keepBestSubmission(store, { peerId: "alice", diff: 0, result: 100, submittedAt: 100 });
+    keepBestSubmission(store, { peerId: "alice", diff: 7, result: 93, submittedAt: 200 });
+    expect(store.get("alice")).toMatchObject({ diff: 0, result: 100 });
+  });
+
+  it("keeps the longer word when a shorter one arrives later", () => {
+    const store = new Map<string, BestComparable>();
+    keepBestSubmission(store, { peerId: "bob", length: 4, submittedAt: 100 });
+    keepBestSubmission(store, { peerId: "bob", length: 7, submittedAt: 200 });
+    keepBestSubmission(store, { peerId: "bob", length: 3, submittedAt: 300 });
+    expect(store.get("bob")).toMatchObject({ length: 7 });
+  });
+
+  it("keeps the earliest when diffs are equal", () => {
+    const store = new Map<string, BestComparable>();
+    keepBestSubmission(store, { peerId: "alice", diff: 2, result: 98, submittedAt: 100 });
+    keepBestSubmission(store, { peerId: "alice", diff: 2, result: 98, submittedAt: 200 });
+    expect(store.get("alice")).toMatchObject({ submittedAt: 100 });
+  });
+
+  it("tracks different players independently", () => {
+    const store = new Map<string, BestComparable>();
+    keepBestSubmission(store, { peerId: "alice", diff: 1, result: 99, submittedAt: 100 });
+    keepBestSubmission(store, { peerId: "bob", diff: 5, result: 95, submittedAt: 100 });
+    keepBestSubmission(store, { peerId: "alice", diff: 9, result: 91, submittedAt: 200 });
+    expect(store.get("alice")).toMatchObject({ diff: 1 });
+    expect(store.get("bob")).toMatchObject({ diff: 5 });
+  });
+
+  it("prefers a real result over a null result at equal diff", () => {
+    const store = new Map<string, BestComparable>();
+    keepBestSubmission(store, { peerId: "alice", diff: 2, result: null, submittedAt: 100 });
+    keepBestSubmission(store, { peerId: "alice", diff: 2, result: 98, submittedAt: 200 });
+    expect(store.get("alice")).toMatchObject({ result: 98 });
   });
 });

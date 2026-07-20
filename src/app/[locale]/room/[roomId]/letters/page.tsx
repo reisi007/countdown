@@ -14,6 +14,7 @@ import {
   resetTiles,
   type LetterTile,
 } from "@/lib/game/letters";
+import { keepBestSubmission } from "@/lib/game/scoring";
 
 const TILES = 9;
 
@@ -146,7 +147,7 @@ export default function MultiplayerLettersPage() {
       nickname: nick,
       submittedAt: Date.now(),
     };
-    submissionsRef.current.set(sub.peerId, sub);
+    keepBestSubmission(submissionsRef.current, sub);
     setSubmissions(Array.from(submissionsRef.current.values()));
 
     if (peerRef.current) {
@@ -247,7 +248,7 @@ export default function MultiplayerLettersPage() {
         }
         case "word-submitted": {
           const sub = msg.payload as WordSubmission;
-          submissionsRef.current.set(sub.peerId, sub);
+          keepBestSubmission(submissionsRef.current, sub);
           const all = Array.from(submissionsRef.current.values());
           setSubmissions(all);
 

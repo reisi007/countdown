@@ -9,6 +9,7 @@ import {
   type NumbersSolution,
   type NumbersTileResult,
 } from "@/lib/game/numbers";
+import { keepBestSubmission } from "@/lib/game/scoring";
 import { NumberDrawer } from "@/components/NumberDrawer";
 import { NumberPlayInteractive } from "@/components/NumberPlayInteractive";
 
@@ -171,7 +172,8 @@ export default function MultiplayerNumbersPage() {
       setScoringStarted(true);
 
       if (isHostRef.current) {
-        submissionsRef.current.set(sub.peerId, sub);
+        const best = keepBestSubmission(submissionsRef.current, sub);
+        peer.broadcast({ type: "num-submitted", payload: best });
         const all = Array.from(submissionsRef.current.values());
         setSubmissions(all);
         peer.broadcast({ type: "num-submitted", payload: sub });
@@ -414,7 +416,7 @@ export default function MultiplayerNumbersPage() {
         }
         case "num-submitted": {
           const sub = msg.payload as PlayerSubmission;
-          submissionsRef.current.set(sub.peerId, sub);
+          keepBestSubmission(submissionsRef.current, sub);
           const all = Array.from(submissionsRef.current.values());
           setSubmissions(all);
 
