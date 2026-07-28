@@ -18,7 +18,7 @@
   "dependencies": {
     "an-array-of-german-words": "^1.2.0",
     "express": "^5.2.1",
-    "next": "^16.2.10",
+    "next": "^16.2.11",
     "peer": "^1.0.0",
     "peerjs": "^1.5.5",
     "react": "^19.2.7",
