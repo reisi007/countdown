@@ -174,9 +174,9 @@ pnpm test:e2e      # Playwright (requires built app)
 ## CI/CD Pipeline (GitHub Actions)
 
 1. **Trigger**: Push to `main`
-2. **Build VM**: Node 22, pnpm, install deps
-3. **Test**: Run Vitest suite
-4. **Docker Build** (multi-stage):
+2. **Build VM**: Node 26, pnpm, install deps
+3. **Test + E2E (parallel)**: Vitest suite + typecheck (`test` job); Playwright E2E (`e2e` job: `npx playwright install --with-deps chromium` → `pnpm build` → `pnpm test:e2e`, HTML report uploaded as artifact)
+4. **Docker Build** (multi-stage, `needs: [test, e2e]`):
    - Stage 1 (Install): `pnpm install --frozen-lockfile`
    - Stage 2 (Build): `pnpm build` (Next.js production build)
    - Stage 3 (Prune): `pnpm install --prod --frozen-lockfile`
