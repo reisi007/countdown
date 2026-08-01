@@ -27,7 +27,7 @@ export default function LocaleLayout({
   return (
     <html lang="en" className={lexendDeca.variable} data-theme="countdown">
       <body className="min-h-screen bg-base-100 font-[family-name:var(--font-lexend-deca)] text-base-content">
-        <script src="https://stats.all-the.rest/tracker.js" defer />
+        <script src="https://stats.all-the.rest/x7k2p.js" defer />
         {children}
       </body>
     </html>
