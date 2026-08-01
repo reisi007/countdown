@@ -35,7 +35,12 @@ app.prepare().then(() => {
     if (pathname.startsWith("/_next/")) {
       upgradeHandler(req, socket, head).catch(() => socket.destroy());
     } else if (pathname.startsWith("/signaling")) {
-      peerUpgradeHandler(req, socket, head);
+      try {
+        peerUpgradeHandler(req, socket, head);
+      } catch (err) {
+        console.error("[server.js] signaling upgrade error", err);
+        socket.destroy();
+      }
     } else {
       socket.destroy();
     }

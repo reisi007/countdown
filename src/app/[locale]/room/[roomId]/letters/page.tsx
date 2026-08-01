@@ -15,6 +15,7 @@ import {
   type LetterTile,
 } from "@/lib/game/letters";
 import { keepBestSubmission } from "@/lib/game/scoring";
+import { trackEvent } from "@/lib/tracking";
 
 const TILES = 9;
 
@@ -46,6 +47,33 @@ export default function MultiplayerLettersPage() {
   const [submissions, setSubmissions] = useState<WordSubmission[]>([]);
   const [wordError, setWordError] = useState<string | null>(null);
   const [winner, setWinner] = useState<WordSubmission | null>(null);
+
+  const prevPhaseRef = useRef<GamePhase>("drawing");
+
+  useEffect(() => {
+    const prev = prevPhaseRef.current;
+    if (prev !== "playing" && phase === "playing") {
+      const vowels = tiles.filter((t) => t.type === "vowel").length;
+      trackEvent("game_start", {
+        mode: "multi",
+        type: "letters",
+        locale,
+        timer: timerDuration,
+        vowels,
+        consonants: tiles.length - vowels,
+      });
+    }
+    if (prev !== "finished" && phase === "finished") {
+      trackEvent("round_complete", {
+        mode: "multi",
+        type: "letters",
+        locale,
+        top_length: winner?.length ?? 0,
+        submissions: submissions.length,
+      });
+    }
+    prevPhaseRef.current = phase;
+  }, [phase, tiles, winner, submissions, locale, timerDuration]);
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const tilesRef = useRef<LetterTile[]>([]);
@@ -149,6 +177,13 @@ export default function MultiplayerLettersPage() {
     };
     keepBestSubmission(submissionsRef.current, sub);
     setSubmissions(Array.from(submissionsRef.current.values()));
+    trackEvent("word_submit", {
+      mode: "multi",
+      type: "letters",
+      locale,
+      valid: true,
+      length: word.length,
+    });
 
     if (peerRef.current) {
       peerRef.current.broadcast({ type: "word-submitted", payload: sub });
@@ -191,6 +226,7 @@ export default function MultiplayerLettersPage() {
     tilesRef.current = reordered;
     setTiles(reordered);
     peer.broadcast({ type: "tiles-order", payload: reordered });
+    trackEvent("shuffle", { mode: "multi", type: "letters", locale });
   }
 
   function resetTileOrder(peer: PeerManager) {
@@ -199,6 +235,7 @@ export default function MultiplayerLettersPage() {
     tilesRef.current = reordered;
     setTiles(reordered);
     peer.broadcast({ type: "tiles-order", payload: reordered });
+    trackEvent("reset", { mode: "multi", type: "letters", locale });
   }
 
   const handleMessage = useCallback(

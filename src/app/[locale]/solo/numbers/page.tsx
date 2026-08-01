@@ -18,6 +18,7 @@ import { NumberDrawer } from "@/components/NumberDrawer";
 import { NumberPlayInteractive } from "@/components/NumberPlayInteractive";
 import { SoloTimerSetup } from "@/components/SoloTimerSetup";
 import { Timer } from "@/components/Timer";
+import { trackEvent } from "@/lib/tracking";
 
 type Op = "+" | "-" | "\u00d7" | "\u00f7";
 
@@ -184,6 +185,34 @@ export default function SoloNumbersPage() {
 
   const tiles = game.tiles.map((t) => t.value);
 
+  const prevPhaseRef = useRef(game.phase);
+
+  useEffect(() => {
+    const prev = prevPhaseRef.current;
+    if (prev !== "playing" && game.phase === "playing") {
+      const large = game.tiles.filter((t) => t.value >= 25).length;
+      trackEvent("game_start", {
+        mode: "solo",
+        type: "numbers",
+        locale,
+        timer: timerEnabled ? timerDuration : 0,
+        target: game.target,
+        large,
+        small: game.tiles.length - large,
+      });
+    }
+    if (prev !== "scoring" && game.phase === "scoring" && playerDiff !== null) {
+      trackEvent("round_complete", {
+        mode: "solo",
+        type: "numbers",
+        locale,
+        diff: playerDiff,
+        exact: playerDiff === 0,
+      });
+    }
+    prevPhaseRef.current = game.phase;
+  }, [game.phase, game.target, playerDiff, locale, timerEnabled, timerDuration]);
+
   const handleNewRound = useCallback(() => {
     setGame(createNumbersGame());
     setResults([]);
@@ -197,7 +226,8 @@ export default function SoloNumbersPage() {
     setNextId(1);
     setBestAttempt(null);
     setTimeLeft(timerDuration);
-  }, [timerDuration]);
+    trackEvent("new_round", { mode: "solo", type: "numbers", locale });
+  }, [timerDuration, locale]);
 
   const selectNumber = useCallback((index: number) => {
     if (game.phase !== "playing") return;
@@ -264,13 +294,20 @@ export default function SoloNumbersPage() {
     setSelected([]);
     setPendingOp(null);
     setFeedback(null);
-  }, [results]);
+    trackEvent("undo", { mode: "solo", type: "numbers", locale });
+  }, [results, locale]);
 
   const handleGiveUp = useCallback(() => {
     if (!bestAttempt) return;
     setPlayerDiff(bestAttempt.diff);
     setGame((g) => ({ ...g, phase: "scoring" }));
-  }, [bestAttempt]);
+    trackEvent("give_up", {
+      mode: "solo",
+      type: "numbers",
+      locale,
+      diff: bestAttempt.diff,
+    });
+  }, [bestAttempt, locale]);
 
   const handleResetAll = useCallback(() => {
     setResults([]);
@@ -278,7 +315,13 @@ export default function SoloNumbersPage() {
     setSelected([]);
     setPendingOp(null);
     setFeedback(null);
-  }, []);
+    trackEvent("reset", {
+      mode: "solo",
+      type: "numbers",
+      locale,
+      scope: "calculation",
+    });
+  }, [locale]);
 
   const handleFinish = useCallback(() => {
     if (results.length === 0) { setFeedback(t.makeCalc); return; }
@@ -296,9 +339,17 @@ export default function SoloNumbersPage() {
   }, [results, game.target, t]);
 
   const handleSolve = useCallback(() => {
+    const sol = solveNumbers(tiles, game.target);
+    setSolution(sol);
     setShowSolver(true);
-    setSolution(solveNumbers(tiles, game.target));
-  }, [tiles, game.target]);
+    trackEvent("solution_view", {
+      mode: "solo",
+      type: "numbers",
+      locale,
+      exact: sol.exact,
+      difference: sol.difference,
+    });
+  }, [tiles, game.target, locale]);
 
   const handleTimeout = useCallback(() => {
     setPlayerDiff((diff) => {

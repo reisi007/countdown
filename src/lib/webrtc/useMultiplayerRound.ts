@@ -1,6 +1,13 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { PeerManager, PeerMessage, getStoredPeerId, getStoredJoinedAt } from "./peer";
+import {
+  PeerManager,
+  PeerMessage,
+  acquireSessionPeer,
+  getStoredPeerId,
+  getStoredJoinedAt,
+  releaseSessionPeer,
+} from "./peer";
 import type { PlayerRecord } from "@/lib/db";
 
 export type RoundPeer = {
@@ -19,6 +26,12 @@ export type UseMultiplayerRoundOptions = {
    * Useful for a host that needs to auto-start a round (e.g. conundrum).
    */
   onReady?: (round: RoundPeer) => void;
+  /**
+   * Invoked when a remote peer establishes a new connection. A round page can
+   * use this to re-broadcast its current state, since WebRTC connections can
+   * open after the host already advanced the round (message loss otherwise).
+   */
+  onPeerJoin?: (peerId: string) => void;
 };
 
 type RoomPlayer = { peerId: string; joinedAt: number; nickname: string };
@@ -37,7 +50,12 @@ function electHostFromList(players: RoomPlayer[]): string | null {
  * peer-to-peer mesh, and keeps the roster warm via heartbeats. Host identity is
  * derived from the server roster so it stays consistent across navigation.
  */
-export function useMultiplayerRound({ roomId, onMessage, onReady }: UseMultiplayerRoundOptions) {
+export function useMultiplayerRound({
+  roomId,
+  onMessage,
+  onReady,
+  onPeerJoin,
+}: UseMultiplayerRoundOptions) {
   const [isHost, setIsHost] = useState(false);
   const [myPeerId, setMyPeerId] = useState<string | null>(null);
   const [myNickname, setMyNickname] = useState("");
@@ -47,6 +65,7 @@ export function useMultiplayerRound({ roomId, onMessage, onReady }: UseMultiplay
   const peerRef = useRef<PeerManager | null>(null);
   const messageHandlerRef = useRef(onMessage);
   const readyHandlerRef = useRef(onReady);
+  const peerJoinHandlerRef = useRef(onPeerJoin);
 
   useEffect(() => {
     messageHandlerRef.current = onMessage;
@@ -54,6 +73,9 @@ export function useMultiplayerRound({ roomId, onMessage, onReady }: UseMultiplay
   useEffect(() => {
     readyHandlerRef.current = onReady;
   }, [onReady]);
+  useEffect(() => {
+    peerJoinHandlerRef.current = onPeerJoin;
+  }, [onPeerJoin]);
 
   useEffect(() => {
     const hostname = window.location.hostname;
@@ -65,7 +87,7 @@ export function useMultiplayerRound({ roomId, onMessage, onReady }: UseMultiplay
         const storedPeerId = getStoredPeerId();
         const storedJoinedAt = getStoredJoinedAt();
 
-        peer = new PeerManager({
+        peer = acquireSessionPeer({
           host: hostname,
           port: 3000,
           path: "/signaling",
@@ -74,7 +96,9 @@ export function useMultiplayerRound({ roomId, onMessage, onReady }: UseMultiplay
           onMessage: (msg: PeerMessage) => {
             if (mounted) messageHandlerRef.current(msg, peer);
           },
-          onPlayerJoin: () => {},
+          onPlayerJoin: (peerId: string) => {
+            if (mounted) peerJoinHandlerRef.current?.(peerId);
+          },
           onPlayerLeave: () => {},
         });
 
@@ -112,12 +136,20 @@ export function useMultiplayerRound({ roomId, onMessage, onReady }: UseMultiplay
         if (hostPlayer) setHostName(hostPlayer.nickname);
 
         // Re-establish the peer-to-peer mesh with everyone already in the room.
+        // Both peers dial each other right after mounting, so a dial can fail
+        // because the remote peer is not registered with the signaling server
+        // yet. Retry so the mesh reliably forms.
         for (const p of roomPlayers) {
           if (p.peerId !== pid) {
-            try {
-              await peer.connectToPeer(p.peerId);
-            } catch {
-              // Peer may not be reachable yet; it will dial back via "connection".
+            for (let attempt = 0; attempt < 5; attempt++) {
+              try {
+                await peer.connectToPeer(p.peerId);
+                peerJoinHandlerRef.current?.(p.peerId);
+                break;
+              } catch {
+                if (attempt === 4) break;
+                await new Promise((r) => setTimeout(r, 1000));
+              }
             }
           }
         }
@@ -158,7 +190,7 @@ export function useMultiplayerRound({ roomId, onMessage, onReady }: UseMultiplay
           `/api/rooms/${roomId}`,
           new Blob([JSON.stringify({ action: "leave", peerId: pid })], { type: "application/json" }),
         );
-        p.disconnect({ clearIdentity: true });
+        releaseSessionPeer();
       }
     }
     window.addEventListener("beforeunload", onUnload);
@@ -167,13 +199,10 @@ export function useMultiplayerRound({ roomId, onMessage, onReady }: UseMultiplay
       clearInterval(heartbeat);
       window.removeEventListener("beforeunload", onUnload);
       mounted = false;
-      // Navigating back to the lobby or between rounds keeps the identity and
-      // roster entry intact; only a real leave (beforeunload / Leave Room)
-      // tears them down.
-      if (peerRef.current) {
-        peerRef.current.disconnect();
-        peerRef.current = null;
-      }
+      // Navigating between rounds / lobby keeps the shared session peer alive.
+      // The next page re-acquires it and re-attaches its handlers, so the id
+      // never needs to be re-registered with the signaling server. Only a real
+      // leave (beforeunload / Leave Room) tears it down via releaseSessionPeer.
     };
   }, [roomId]);
 

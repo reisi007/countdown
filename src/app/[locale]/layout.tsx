@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import Link from "next/link";
 import { Lexend_Deca } from "next/font/google";
 import "@/styles/globals.css";
 
@@ -29,6 +30,19 @@ export default function LocaleLayout({
       <body className="min-h-screen bg-base-100 font-[family-name:var(--font-lexend-deca)] text-base-content">
         <script src="https://stats.all-the.rest/x7k2p.js" defer />
         {children}
+        <footer className="flex items-center justify-center gap-6 p-4 text-sm text-base-content/50">
+          <Link href="/de/impressum" className="link link-hover">
+            Impressum
+          </Link>
+          <a
+            href="https://all-the.rest/datenschutz"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="link link-hover"
+          >
+            Datenschutz
+          </a>
+        </footer>
       </body>
     </html>
   );

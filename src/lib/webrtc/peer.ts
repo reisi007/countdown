@@ -49,11 +49,15 @@ export class PeerManager {
   private connections: Map<string, DataConnection>;
   private config: PeerConfig;
   private joinedAt: number;
+  private currentId: string | null = null;
   private destroyed = false;
   private roomReady = false;
   private connectResolve: (() => void) | null = null;
   private connectReject: ((err: Error) => void) | null = null;
   private connectTimeout: ReturnType<typeof setTimeout> | null = null;
+  private staleCleanup: (() => void) | null = null;
+  private staleTimer: ReturnType<typeof setTimeout> | null = null;
+  private staleTimeoutMs = 10 * 60 * 1000;
 
   constructor(config: PeerConfig) {
     this.connections = new Map();
@@ -76,6 +80,7 @@ export class PeerManager {
   }
 
   private createPeer(id: string) {
+    this.currentId = id;
     this.peer = new Peer(id, {
       host: this.config.host,
       port: this.config.port,
@@ -85,6 +90,7 @@ export class PeerManager {
 
     this.peer.on("open", () => {
       this.roomReady = true;
+      this.clearStaleTimer();
       if (this.connectTimeout) {
         clearTimeout(this.connectTimeout);
         this.connectTimeout = null;
@@ -99,7 +105,16 @@ export class PeerManager {
     });
 
     this.peer.on("disconnected", () => {
-      if (!this.destroyed) this.peer.reconnect();
+      if (this.destroyed) return;
+      // PeerJS nulls `_id` on disconnect and reconnects using `_lastServerId`.
+      // Guard against a missing `_lastServerId` so the reconnect keeps the
+      // same id (and therefore the same token the signaling server expects).
+      const internal = this.peer as unknown as { _lastServerId?: string | null };
+      if (!internal._lastServerId && this.currentId) {
+        internal._lastServerId = this.currentId;
+      }
+      this.peer.reconnect();
+      this.scheduleStaleCleanup();
     });
 
     this.peer.on("error", (err) => {
@@ -114,6 +129,7 @@ export class PeerManager {
         this.destroyed = true;
         this.peer.destroy();
         this.connections.clear();
+        this.clearStaleTimer();
         this.destroyed = false;
         const newId = Math.random().toString(36).substring(2, 10);
         if (typeof sessionStorage !== "undefined") sessionStorage.setItem(PEER_ID_KEY, newId);
@@ -130,6 +146,41 @@ export class PeerManager {
     return this.peer.id;
   }
 
+  /**
+   * Swaps the message/join/leave handlers. Used by the shared session peer so
+   * pages can re-attach their own handlers as the user navigates between the
+   * lobby and round pages without creating a new Peer instance.
+   */
+  setHandlers(config: PeerConfig): void {
+    this.config = config;
+  }
+
+  /**
+   * Registers a cleanup callback that fires when the peer has been disconnected
+   * from the signaling server without reconnecting for `staleTimeoutMs`. Used
+   * by the shared session peer to release a dead session so its id never blocks
+   * a fresh one.
+   */
+  setStaleCleanup(fn: (() => void) | null): void {
+    this.staleCleanup = fn;
+  }
+
+  private clearStaleTimer(): void {
+    if (this.staleTimer) {
+      clearTimeout(this.staleTimer);
+      this.staleTimer = null;
+    }
+  }
+
+  private scheduleStaleCleanup(): void {
+    this.clearStaleTimer();
+    this.staleTimer = setTimeout(() => {
+      this.staleTimer = null;
+      if (this.destroyed || this.peer.open) return;
+      this.staleCleanup?.();
+    }, this.staleTimeoutMs);
+  }
+
   getJoinedAt(): number {
     return this.joinedAt;
   }
@@ -141,11 +192,15 @@ export class PeerManager {
   /**
    * Resolves once the underlying Peer connection is open. Idempotent: repeated
    * calls (e.g. React StrictMode double-mount in dev) resolve immediately after
-   * the first open. Handles "unavailable-id" by regenerating the id and retrying
-   * automatically.
+   * the first open. If the signaling socket dropped, reconnects with the same
+   * id instead of creating a new one. Handles "unavailable-id" by regenerating
+   * the id and retrying automatically.
    */
-  connectToRoom(): Promise<void> {
-    if (this.roomReady) return Promise.resolve();
+  async connectToRoom(): Promise<void> {
+    if (this.roomReady && this.peer.open) return Promise.resolve();
+    if (!this.destroyed && this.peer.disconnected && this.currentId) {
+      this.peer.reconnect();
+    }
 
     return new Promise<void>((resolve, reject) => {
       this.connectResolve = resolve;
@@ -173,9 +228,13 @@ export class PeerManager {
 
   connectToPeer(peerId: string): Promise<DataConnection> {
     return new Promise((resolve, reject) => {
-      if (this.connections.has(peerId)) {
-        resolve(this.connections.get(peerId)!);
+      const existing = this.connections.get(peerId);
+      if (existing && existing.open) {
+        resolve(existing);
         return;
+      }
+      if (existing) {
+        this.connections.delete(peerId);
       }
 
       const conn = this.peer.connect(peerId, { reliable: true });
@@ -233,6 +292,7 @@ export class PeerManager {
     const { clearIdentity = false } = options;
     this.destroyed = true;
     this.roomReady = false;
+    this.clearStaleTimer();
     if (this.connectTimeout) {
       clearTimeout(this.connectTimeout);
       this.connectTimeout = null;
@@ -281,5 +341,39 @@ export class PeerManager {
       this.connections.delete(peerId);
     }
     this.config.onPlayerLeave(peerId);
+  }
+}
+
+let sessionPeer: PeerManager | null = null;
+
+/**
+ * Returns the shared session PeerManager, creating it on first use. The peer
+ * instance — its signaling socket and its P2P mesh — survives navigation
+ * between the lobby and round pages. Reusing one instance avoids reconnecting
+ * with the same id while the previous client is still registered with the
+ * signaling server (which would surface as "ID is taken").
+ */
+export function acquireSessionPeer(config: PeerConfig): PeerManager {
+  if (sessionPeer) {
+    sessionPeer.setHandlers(config);
+    return sessionPeer;
+  }
+  sessionPeer = new PeerManager(config);
+  sessionPeer.setStaleCleanup(() => {
+    // The session has been disconnected without a successful reconnect for
+    // 10 minutes. Release it so the id and identity never block a fresh one.
+    releaseSessionPeer();
+  });
+  return sessionPeer;
+}
+
+/**
+ * Tears down the shared session peer and clears the persisted identity. Only
+ * called on a real leave (Leave Room button, tab close), never on navigation.
+ */
+export function releaseSessionPeer(): void {
+  if (sessionPeer) {
+    sessionPeer.disconnect({ clearIdentity: true });
+    sessionPeer = null;
   }
 }

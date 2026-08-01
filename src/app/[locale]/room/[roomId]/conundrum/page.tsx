@@ -13,6 +13,7 @@ import {
   resetScrambled,
   type ConundrumState,
 } from "@/lib/game/conundrum";
+import { trackEvent } from "@/lib/tracking";
 
 const BUZZER_TIMEOUT = 5;
 const ROUND_TIMEOUT = 30;
@@ -46,6 +47,33 @@ export default function MultiplayerConundrumPage() {
   const [guessError, setGuessError] = useState<string | null>(null);
   const [hasBuzzed, setHasBuzzed] = useState(false);
   const [buzzerId, setBuzzerId] = useState<string | null>(null);
+
+  const prevPhaseRef = useRef<GamePhase>("waiting");
+
+  useEffect(() => {
+    const prev = prevPhaseRef.current;
+    if (prev !== "playing" && phase === "playing") {
+      trackEvent("game_start", { mode: "multi", type: "conundrum", locale });
+    }
+    if (prev !== "solved" && phase === "solved") {
+      trackEvent("round_complete", {
+        mode: "multi",
+        type: "conundrum",
+        locale,
+        solved: true,
+        by_me: solvedByName === "you",
+      });
+    }
+    if (prev !== "timeout" && phase === "timeout") {
+      trackEvent("round_complete", {
+        mode: "multi",
+        type: "conundrum",
+        locale,
+        solved: false,
+      });
+    }
+    prevPhaseRef.current = phase;
+  }, [phase, solvedByName, locale]);
 
   const roundTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const answerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -167,14 +195,16 @@ export default function MultiplayerConundrumPage() {
     const next = shuffleScrambled(scrambled);
     setScrambled(next);
     peer.broadcast({ type: "conundrum-shuffle", payload: { scrambled: next } });
-  }, [scrambled]);
+    trackEvent("shuffle", { mode: "multi", type: "conundrum", locale });
+  }, [scrambled, locale]);
 
   const resetScramble = useCallback((peer: PeerManager) => {
     if (!isHostRef.current || !originalScrambledRef.current) return;
     const next = resetScrambled(originalScrambledRef.current);
     setScrambled(next);
     peer.broadcast({ type: "conundrum-shuffle", payload: { scrambled: next } });
-  }, []);
+    trackEvent("reset", { mode: "multi", type: "conundrum", locale });
+  }, [locale]);
 
   const handleMessage = useCallback((msg: PeerMessage, peer: PeerManager) => {
     switch (msg.type) {
@@ -251,6 +281,12 @@ export default function MultiplayerConundrumPage() {
           { answer: answerRef.current } as ConundrumState,
           guessPayload.guess,
         );
+        trackEvent("guess_submit", {
+          mode: "multi",
+          type: "conundrum",
+          locale,
+          correct,
+        });
         clearAllTimers();
         roundActiveRef.current = false;
         setAnswerReveal(answerRef.current);
@@ -299,7 +335,7 @@ export default function MultiplayerConundrumPage() {
         break;
       }
     }
-  }, [startRound, startAnswerTimer, startRoundTimer, stopRoundTimer, clearAllTimers]);
+  }, [startRound, startAnswerTimer, startRoundTimer, stopRoundTimer, clearAllTimers, locale]);
 
   useEffect(() => {
     realHandlerRef.current = handleMessage;
@@ -326,6 +362,7 @@ export default function MultiplayerConundrumPage() {
       nickname: myNicknameRef.current,
     };
 
+    trackEvent("buzz", { mode: "multi", type: "conundrum", locale });
     peer.broadcast({ type: "buzz", payload: entry });
   }
 

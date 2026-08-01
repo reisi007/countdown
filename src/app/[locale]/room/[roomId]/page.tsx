@@ -3,12 +3,14 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { PeerManager, PeerMessage } from "@/lib/webrtc/peer";
+import { acquireSessionPeer, releaseSessionPeer } from "@/lib/webrtc/peer";
 import {
   electHost,
 } from "@/lib/webrtc/leader-election";
 import type { PlayerInfo } from "@/lib/webrtc/leader-election";
 import type { PlayerRecord } from "@/lib/db";
 import { normalizeGermanWord } from "@/lib/game/letters";
+import { trackEvent } from "@/lib/tracking";
 
 type PlayerEntry = PlayerInfo & { nickname: string };
 type NicknameMap = Record<string, string>;
@@ -189,7 +191,7 @@ export default function RoomPage() {
       try {
         const hostname = window.location.hostname;
 
-        peer = new PeerManager({
+        peer = acquireSessionPeer({
           host: hostname,
           port: 3000,
           path: "/signaling",
@@ -244,6 +246,11 @@ export default function RoomPage() {
         });
         setPlayers(roomPlayers);
         recalculateHost(roomPlayers);
+        trackEvent("room_join", {
+          mode: "multi",
+          locale,
+          players: roomPlayers.length,
+        });
 
         for (const p of roomPlayers) {
           if (p.peerId !== peer.peerId) {
@@ -275,7 +282,7 @@ export default function RoomPage() {
         const pid = p.peerId;
         const blob = new Blob([JSON.stringify({ action: "leave", peerId: pid })], { type: "application/json" });
         navigator.sendBeacon(`/api/rooms/${roomId}`, blob);
-        p.disconnect({ clearIdentity: true });
+        releaseSessionPeer();
       }
     }
     window.addEventListener("beforeunload", onUnload);
@@ -291,17 +298,43 @@ export default function RoomPage() {
       }
     }, 10_000);
 
+    // WebRTC peer connections do not close promptly when a peer's tab is
+    // killed abruptly, so P2P-close alone can leave the lobby stuck with a
+    // vanished host. The signaling server drops the host's socket quickly;
+    // detect its absence there and fail over to the next-oldest player.
+    let hostMisses = 0;
+    const hostWatchdog = setInterval(() => {
+      const p = peerRef.current;
+      const currentHost = hostIdRef.current;
+      if (!p || !currentHost || currentHost === p.peerId) {
+        hostMisses = 0;
+        return;
+      }
+      fetch(`/signaling/peerjs/peers`)
+        .then((res) => (res.ok ? (res.json() as Promise<string[]>) : Promise.resolve([])))
+        .then((peers) => {
+          if (peers.includes(currentHost)) {
+            hostMisses = 0;
+            return;
+          }
+          hostMisses += 1;
+          if (hostMisses >= 2 && hostIdRef.current === currentHost) {
+            hostMisses = 0;
+            handlePeerLeave(currentHost);
+          }
+        })
+        .catch(() => {});
+    }, 1000);
+
     return () => {
       clearInterval(heartbeat);
+      clearInterval(hostWatchdog);
       window.removeEventListener("beforeunload", onUnload);
       disposed = true;
       // Navigation within the room (e.g. starting a round) must NOT wipe the
-      // peer identity or remove the player from the roster. Only the actual
-      // "Leave Room" link and browser close do that (see handleLeaveRoom/onUnload).
-      if (peerRef.current) {
-        peerRef.current.disconnect();
-        peerRef.current = null;
-      }
+      // peer identity or disconnect from the signaling server. The shared
+      // session peer stays alive and is re-acquired by the round page. Only
+      // the actual "Leave Room" link and browser close tear it down.
     };
   }, [roomId, locale, router, recalculateHost, updateHost, updatePlayerState]);
 
@@ -320,7 +353,8 @@ export default function RoomPage() {
     updatePlayerState(updated);
     peer.broadcast({ type: "nickname", payload: { peerId: myPeerId, nickname: trimmed } });
     setEditingNickname(false);
-  }, [roomId, updatePlayerState]);
+    trackEvent("nickname_change", { mode: "multi", locale, length: trimmed.length });
+  }, [roomId, updatePlayerState, locale]);
 
   const avatarColor = (peerId: string) => {
     const colors = ["bg-primary", "bg-secondary", "bg-accent", "bg-info", "bg-success", "bg-warning", "bg-error"];
@@ -335,6 +369,7 @@ export default function RoomPage() {
       await navigator.clipboard.writeText(url);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+      trackEvent("copy_invite", { mode: "multi", locale });
     } catch {
       // Clipboard API not available
     }
@@ -346,21 +381,29 @@ export default function RoomPage() {
       if (!peer) return;
       sessionStorage.setItem(`timer_${roomId}`, String(timerEnabled ? timerDuration : 0));
       peer.broadcast({ type: "game-start", payload: { gameType, timerEnabled, timerDuration } });
+      trackEvent("game_launch", {
+        mode: "multi",
+        locale,
+        game: gameType,
+        timer: timerEnabled ? timerDuration : 0,
+        players: playersRef.current.length,
+      });
       router.push(`/${locale}/room/${roomId}/${gameType}`);
     },
     [locale, roomId, router, timerEnabled, timerDuration],
   );
 
   const handleLeaveRoom = useCallback(() => {
+    trackEvent("leave_room", { mode: "multi", locale });
     const peer = peerRef.current;
     if (peer) {
       const pid = peer.peerId;
-      peer.disconnect({ clearIdentity: true });
       peerRef.current = null;
       navigator.sendBeacon(
         `/api/rooms/${roomId}`,
         new Blob([JSON.stringify({ action: "leave", peerId: pid })], { type: "application/json" }),
       );
+      releaseSessionPeer();
     }
     router.push(`/${locale}`);
   }, [locale, roomId, router]);
@@ -526,7 +569,14 @@ export default function RoomPage() {
                       return (
                         <button
                           key={game}
-                          onClick={() => setSelectedGame(game)}
+                          onClick={() => {
+                            setSelectedGame(game);
+                            trackEvent("game_type_selected", {
+                              mode: "multi",
+                              locale,
+                              game,
+                            });
+                          }}
                           className={`flex items-center gap-3 p-3 rounded-btn border-2 text-left transition-all ${
                             selectedGame === game
                               ? "border-primary bg-primary/10 text-primary"
@@ -558,7 +608,21 @@ export default function RoomPage() {
                 <div className="divider my-1" />
                 <div className="flex items-center justify-between">
                   <span className="text-sm">Timer</span>
-                  <input type="checkbox" className="toggle toggle-sm toggle-primary" checked={timerEnabled} onChange={() => setTimerEnabled((v) => !v)} />
+                  <input
+                    type="checkbox"
+                    className="toggle toggle-sm toggle-primary"
+                    checked={timerEnabled}
+                    onChange={() => {
+                      const enabled = !timerEnabled;
+                      setTimerEnabled(enabled);
+                      trackEvent("timer_config", {
+                        mode: "multi",
+                        locale,
+                        enabled,
+                        duration: enabled ? timerDuration : 0,
+                      });
+                    }}
+                  />
                 </div>
                 {timerEnabled && (
                   <div className="flex items-center gap-3">
@@ -566,7 +630,21 @@ export default function RoomPage() {
                     <input type="range" min={10} max={120} step={5} value={timerDuration} onChange={(e) => setTimerDuration(Number(e.target.value))} className="range range-primary range-sm flex-1" />
                     <div className="flex gap-1">
                       {[15, 30, 60].map((d) => (
-                        <button key={d} className={`btn btn-xs ${timerDuration === d ? "btn-primary" : "btn-ghost"}`} onClick={() => setTimerDuration(d)}>{d}s</button>
+                        <button
+                          key={d}
+                          className={`btn btn-xs ${timerDuration === d ? "btn-primary" : "btn-ghost"}`}
+                          onClick={() => {
+                            setTimerDuration(d);
+                            trackEvent("timer_config", {
+                              mode: "multi",
+                              locale,
+                              enabled: true,
+                              duration: d,
+                            });
+                          }}
+                        >
+                          {d}s
+                        </button>
                       ))}
                     </div>
                   </div>

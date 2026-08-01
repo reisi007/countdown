@@ -10,6 +10,9 @@ test.describe("Multiplayer flow", () => {
 
     await player1Page.goto("/en-GB");
     await player1Page.click("text=Multiplayer");
+    await player1Page.waitForURL(
+      (url) => url.pathname.includes("/room/") && !url.pathname.endsWith("/room/new"),
+    );
 
     const roomUrl = player1Page.url();
     expect(roomUrl).toContain("/room/");
@@ -34,6 +37,9 @@ test.describe("Multiplayer flow", () => {
 
     await hostPage.goto("/en-GB");
     await hostPage.click("text=Multiplayer");
+    await hostPage.waitForURL(
+      (url) => url.pathname.includes("/room/") && !url.pathname.endsWith("/room/new"),
+    );
     const roomUrl = hostPage.url();
     const roomId = roomUrl.split("/room/")[1];
 
@@ -43,7 +49,7 @@ test.describe("Multiplayer flow", () => {
     await hostPage.close();
     await hostContext.close();
 
-    await expect(clientPage.locator("text=host")).toBeVisible({ timeout: 5000 });
+    await expect(clientPage.getByText("You are the host")).toBeVisible({ timeout: 5000 });
 
     await clientContext.close();
   });

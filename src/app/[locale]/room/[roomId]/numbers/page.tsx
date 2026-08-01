@@ -12,6 +12,7 @@ import {
 import { keepBestSubmission } from "@/lib/game/scoring";
 import { NumberDrawer } from "@/components/NumberDrawer";
 import { NumberPlayInteractive } from "@/components/NumberPlayInteractive";
+import { trackEvent } from "@/lib/tracking";
 
 type PlayerSubmission = {
   peerId: string;
@@ -79,6 +80,41 @@ export default function MultiplayerNumbersPage() {
   const [nextId, setNextId] = useState(1);
   const [mySubmission, setMySubmission] = useState<PlayerSubmission | null>(null);
 
+  const prevPhaseRef = useRef<GamePhase>("drawing");
+  const phaseRef = useRef<GamePhase>("drawing");
+
+  useEffect(() => { phaseRef.current = phase; }, [phase]);
+
+  useEffect(() => {
+    const prev = prevPhaseRef.current;
+    if (prev !== "playing" && phase === "playing") {
+      const large = tiles.filter((v) => v >= 25).length;
+      trackEvent("game_start", {
+        mode: "multi",
+        type: "numbers",
+        locale,
+        timer: timerDuration,
+        target,
+        large,
+        small: tiles.length - large,
+      });
+    }
+    if (prev !== "finished" && phase === "finished") {
+      const best = [...submissions].sort(
+        (a, b) => a.diff - b.diff || a.submittedAt - b.submittedAt,
+      )[0];
+      trackEvent("round_complete", {
+        mode: "multi",
+        type: "numbers",
+        locale,
+        diff: best?.diff ?? -1,
+        exact: best?.diff === 0,
+        submissions: submissions.length,
+      });
+    }
+    prevPhaseRef.current = phase;
+  }, [phase, submissions, target, locale, timerDuration]);
+
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const tilesRef = useRef<number[]>([]);
   const targetRef = useRef(0);
@@ -102,6 +138,14 @@ export default function MultiplayerNumbersPage() {
     useMultiplayerRound({
       roomId,
       onMessage: (msg, peer) => realHandlerRef.current(msg, peer),
+      onPeerJoin: () => {
+        if (isHostRef.current && tilesRef.current.length >= 6 && phaseRef.current === "playing") {
+          peerRef.current?.broadcast({
+            type: "num-tiles-complete",
+            payload: { tiles: tilesRef.current, target: targetRef.current },
+          });
+        }
+      },
     });
 
   useEffect(() => { isHostRef.current = isHost; }, [isHost]);
@@ -170,6 +214,13 @@ export default function MultiplayerNumbersPage() {
 
       setMySubmission(sub);
       setScoringStarted(true);
+      trackEvent("submit_result", {
+        mode: "multi",
+        type: "numbers",
+        locale,
+        diff,
+        exact: diff === 0,
+      });
 
       if (isHostRef.current) {
         const best = keepBestSubmission(submissionsRef.current, sub);
@@ -213,7 +264,13 @@ export default function MultiplayerNumbersPage() {
   const handleGiveUp = useCallback(() => {
     if (!bestAttempt) return;
     submitResult(bestAttempt.result, bestAttempt.diff);
-  }, [bestAttempt, submitResult]);
+    trackEvent("give_up", {
+      mode: "multi",
+      type: "numbers",
+      locale,
+      diff: bestAttempt.diff,
+    });
+  }, [bestAttempt, submitResult, locale]);
 
   const selectNumber = useCallback(
     (index: number) => {
@@ -307,7 +364,8 @@ export default function MultiplayerNumbersPage() {
     setSelected([]);
     setPendingOp(null);
     setFeedback(null);
-  }, [results]);
+    trackEvent("undo", { mode: "multi", type: "numbers", locale });
+  }, [results, locale]);
 
   const handleResetAll = useCallback(() => {
     setResults([]);
@@ -315,7 +373,13 @@ export default function MultiplayerNumbersPage() {
     setSelected([]);
     setPendingOp(null);
     setFeedback(null);
-  }, []);
+    trackEvent("reset", {
+      mode: "multi",
+      type: "numbers",
+      locale,
+      scope: "calculation",
+    });
+  }, [locale]);
 
   const completeTiles = useCallback(() => {
     const t = Math.floor(Math.random() * 899) + 101;
