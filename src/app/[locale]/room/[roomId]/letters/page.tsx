@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { PeerManager, PeerMessage } from "@/lib/webrtc/peer";
@@ -99,14 +99,14 @@ export default function MultiplayerLettersPage() {
   useEffect(() => { setIsHostFnRef.current = setIsHost; }, [setIsHost]);
   useEffect(() => { setHostNameFnRef.current = setHostName; }, [setHostName]);
 
-  const stopTimer = useCallback(() => {
+  const stopTimer = () => {
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
     }
-  }, []);
+  };
 
-  const endRound = useCallback((peer: PeerManager) => {
+  const endRound = (peer: PeerManager) => {
     stopTimer();
     setPhase("scoring");
     const all = Array.from(submissionsRef.current.values());
@@ -135,9 +135,9 @@ export default function MultiplayerLettersPage() {
     setSubmissions(sorted);
     setWinner(w);
     setPhase("finished");
-  }, [roomId, stopTimer]);
+  };
 
-  const startTimer = useCallback((peer: PeerManager) => {
+  const startTimer = (peer: PeerManager) => {
     stopTimer();
     setTimeRemaining(timerDuration);
     if (timerDuration <= 0) return;
@@ -153,7 +153,7 @@ export default function MultiplayerLettersPage() {
         return next;
       });
     }, 1000);
-  }, [timerDuration, endRound, stopTimer, peerRef]);
+  };
 
   useEffect(() => () => stopTimer(), [stopTimer]);
 
@@ -238,87 +238,84 @@ export default function MultiplayerLettersPage() {
     trackEvent("reset", { mode: "multi", type: "letters", locale });
   }
 
-  const handleMessage = useCallback(
-    (msg: PeerMessage, peer: PeerManager) => {
-      switch (msg.type) {
-        case "player-list": {
-          const list = msg.payload as Array<{
-            peerId: string;
-            joinedAt: number;
-            nickname: string;
-          }>;
-          playerCountRef.current = list.length;
-          const hostId =
-            list.length > 0
-              ? list.reduce((oldest, p) => (p.joinedAt < oldest.joinedAt ? p : oldest))
-                  .peerId
-              : null;
-          setIsHostFnRef.current(hostId === peer.peerId);
-          const h = list.find((p) => p.peerId === hostId);
-          if (h) setHostNameFnRef.current(h.nickname);
-          break;
-        }
-        case "tile-drawn": {
-          const tile = msg.payload as LetterTile;
-          const newTiles = [...tilesRef.current, tile];
-          tilesRef.current = newTiles;
-          setTiles(newTiles);
-          break;
-        }
-        case "tiles-complete": {
-          const final = msg.payload as LetterTile[];
-          tilesRef.current = final;
-          setTiles(final);
-          setPhase("playing");
-          startTimer(peer);
-          break;
-        }
-        case "tiles-order": {
-          const reordered = msg.payload as LetterTile[];
-          tilesRef.current = reordered;
-          setTiles(reordered);
-          break;
-        }
-        case "timer-sync": {
-          setTimeRemaining(msg.payload as number);
-          break;
-        }
-        case "word-submitted": {
-          const sub = msg.payload as WordSubmission;
-          keepBestSubmission(submissionsRef.current, sub);
-          const all = Array.from(submissionsRef.current.values());
-          setSubmissions(all);
-
-          if (isHostRef.current && timerDuration <= 0) {
-            const uniquePlayers = all
-              .map((s) => s.peerId)
-              .filter((id, i, arr) => arr.indexOf(id) === i);
-            if (uniquePlayers.length >= playerCountRef.current) {
-              endRound(peer);
-            }
-          }
-          break;
-        }
-        case "round-results": {
-          stopTimer();
-          const r = msg.payload as {
-            submissions: WordSubmission[];
-            winner: WordSubmission | null;
-          };
-          setSubmissions(r.submissions);
-          setWinner(r.winner);
-          setPhase("finished");
-          break;
-        }
-        case "scores-update": {
-          const s = msg.payload as Record<string, number>;
-          sessionStorage.setItem(`scores_${roomId}`, JSON.stringify(s));
-          break;
-        }
+  const handleMessage = (msg: PeerMessage, peer: PeerManager) => {
+    switch (msg.type) {
+      case "player-list": {
+        const list = msg.payload as Array<{
+          peerId: string;
+          joinedAt: number;
+          nickname: string;
+        }>;
+        playerCountRef.current = list.length;
+        const hostId =
+          list.length > 0
+            ? list.reduce((oldest, p) => (p.joinedAt < oldest.joinedAt ? p : oldest))
+                .peerId
+            : null;
+        setIsHostFnRef.current(hostId === peer.peerId);
+        const h = list.find((p) => p.peerId === hostId);
+        if (h) setHostNameFnRef.current(h.nickname);
+        break;
       }
-    },
-    [roomId, timerDuration, endRound, startTimer, stopTimer],
-  );
+      case "tile-drawn": {
+        const tile = msg.payload as LetterTile;
+        const newTiles = [...tilesRef.current, tile];
+        tilesRef.current = newTiles;
+        setTiles(newTiles);
+        break;
+      }
+      case "tiles-complete": {
+        const final = msg.payload as LetterTile[];
+        tilesRef.current = final;
+        setTiles(final);
+        setPhase("playing");
+        startTimer(peer);
+        break;
+      }
+      case "tiles-order": {
+        const reordered = msg.payload as LetterTile[];
+        tilesRef.current = reordered;
+        setTiles(reordered);
+        break;
+      }
+      case "timer-sync": {
+        setTimeRemaining(msg.payload as number);
+        break;
+      }
+      case "word-submitted": {
+        const sub = msg.payload as WordSubmission;
+        keepBestSubmission(submissionsRef.current, sub);
+        const all = Array.from(submissionsRef.current.values());
+        setSubmissions(all);
+
+        if (isHostRef.current && timerDuration <= 0) {
+          const uniquePlayers = all
+            .map((s) => s.peerId)
+            .filter((id, i, arr) => arr.indexOf(id) === i);
+          if (uniquePlayers.length >= playerCountRef.current) {
+            endRound(peer);
+          }
+        }
+        break;
+      }
+      case "round-results": {
+        stopTimer();
+        const r = msg.payload as {
+          submissions: WordSubmission[];
+          winner: WordSubmission | null;
+        };
+        setSubmissions(r.submissions);
+        setWinner(r.winner);
+        setPhase("finished");
+        break;
+      }
+      case "scores-update": {
+        const s = msg.payload as Record<string, number>;
+        sessionStorage.setItem(`scores_${roomId}`, JSON.stringify(s));
+        break;
+      }
+    }
+  };
 
   useEffect(() => {
     realHandlerRef.current = handleMessage;

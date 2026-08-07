@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { PeerManager, PeerMessage } from "@/lib/webrtc/peer";
@@ -102,7 +102,7 @@ export default function MultiplayerConundrumPage() {
     },
   });
 
-  const clearAllTimers = useCallback(() => {
+  const clearAllTimers = () => {
     if (roundTimerRef.current) {
       clearInterval(roundTimerRef.current);
       roundTimerRef.current = null;
@@ -111,16 +111,16 @@ export default function MultiplayerConundrumPage() {
       clearTimeout(answerTimerRef.current);
       answerTimerRef.current = null;
     }
-  }, []);
+  };
 
-  const stopRoundTimer = useCallback(() => {
+  const stopRoundTimer = () => {
     if (roundTimerRef.current) {
       clearInterval(roundTimerRef.current);
       roundTimerRef.current = null;
     }
-  }, []);
+  };
 
-  const startAnswerTimer = useCallback((peer: PeerManager) => {
+  const startAnswerTimer = (peer: PeerManager) => {
     if (answerTimerRef.current) clearTimeout(answerTimerRef.current);
 
     answerTimerRef.current = setTimeout(() => {
@@ -137,9 +137,9 @@ export default function MultiplayerConundrumPage() {
         },
       });
     }, BUZZER_TIMEOUT * 1000);
-  }, [buzzerName, clearAllTimers]);
+  };
 
-  const startRoundTimer = useCallback(() => {
+  const startRoundTimer = () => {
     clearAllTimers();
     setTimeRemaining(ROUND_TIMEOUT);
 
@@ -161,9 +161,9 @@ export default function MultiplayerConundrumPage() {
         return next;
       });
     }, 1000);
-  }, [clearAllTimers, peerRef])
+  };
 
-  const startRound = useCallback((peer: PeerManager) => {
+  const startRound = (peer: PeerManager) => {
     const word = getConundrumWord(locale);
     const scrambledWord = scrambleWord(word);
 
@@ -188,25 +188,25 @@ export default function MultiplayerConundrumPage() {
       type: "conundrum-start",
       payload: { scrambled: scrambledWord },
     });
-  }, [locale, startRoundTimer]);
+  };
 
-  const shuffleScramble = useCallback((peer: PeerManager) => {
+  const shuffleScramble = (peer: PeerManager) => {
     if (!isHostRef.current || !originalScrambledRef.current) return;
     const next = shuffleScrambled(scrambled);
     setScrambled(next);
     peer.broadcast({ type: "conundrum-shuffle", payload: { scrambled: next } });
     trackEvent("shuffle", { mode: "multi", type: "conundrum", locale });
-  }, [scrambled, locale]);
+  };
 
-  const resetScramble = useCallback((peer: PeerManager) => {
+  const resetScramble = (peer: PeerManager) => {
     if (!isHostRef.current || !originalScrambledRef.current) return;
     const next = resetScrambled(originalScrambledRef.current);
     setScrambled(next);
     peer.broadcast({ type: "conundrum-shuffle", payload: { scrambled: next } });
     trackEvent("reset", { mode: "multi", type: "conundrum", locale });
-  }, [locale]);
+  };
 
-  const handleMessage = useCallback((msg: PeerMessage, peer: PeerManager) => {
+  const handleMessage = (msg: PeerMessage, peer: PeerManager) => {
     switch (msg.type) {
       case "player-list": {
         const list = msg.payload as Array<{ peerId: string; joinedAt: number; nickname: string }>;
@@ -335,7 +335,7 @@ export default function MultiplayerConundrumPage() {
         break;
       }
     }
-  }, [startRound, startAnswerTimer, startRoundTimer, stopRoundTimer, clearAllTimers, locale]);
+  };
 
   useEffect(() => {
     realHandlerRef.current = handleMessage;

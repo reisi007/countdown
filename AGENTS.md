@@ -237,6 +237,7 @@ If any command fails, fix the errors before marking work as done. No exceptions.
 
 | Pattern | Why | Fix |
 |---------|-----|-----|
+| `useMemo` / `useCallback` / `React.memo` / `forwardRef` in components | React Compiler is enabled (`next.config` `reactCompiler: true`) and auto-memoizes; manual memoization is an antipattern | Write plain functions/values; let the React Compiler handle memoization. Exception: ref-delegation pattern for hook-order safety stays |
 | `<style jsx>` in components | Causes `__webpack_require__.n is not a function` crash on soft navigation in Next.js 15 App Router | Define `@keyframes` in `globals.css` and reference by name in inline `style` or Tailwind `animate-*` utility |
 | Calling `useMultiplayerRound` after defining callbacks that use its return values | Temporal dead zone — TypeScript errors and potential runtime crashes | Use ref-delegation: pass `(msg, peer) => realHandlerRef.current(msg, peer)` as `onMessage`, define the real handler **after** the hook call, sync with `useEffect(() => { realHandlerRef.current = realHandler; }, [realHandler])` |
 | Inline styles for themed colors | Bypasses daisyUI theming | Use daisyUI color classes (`bg-primary`, `text-base-content`, etc.) |
@@ -262,11 +263,12 @@ const { peerRef, isHost, setIsHost, myPeerId, ... } = useMultiplayerRound({
 useEffect(() => { myPeerIdRef.current = myPeerId; }, [myPeerId]);
 useEffect(() => { setIsHostFnRef.current = setIsHost; }, [setIsHost]);
 
-// 4. Define the real handler NOW (after hook), using refs
-const handleMessage = useCallback((msg, peer) => {
+// 4. Define the real handler NOW (after hook), using refs — plain function,
+//    React Compiler memoizes it based on its own dependencies
+const handleMessage = (msg, peer) => {
   setIsHostFnRef.current(...);    // safe — via ref
   if (msg.peerId === myPeerIdRef.current) { ... }  // safe — via ref
-}, [/* deps */]);
+};
 
 // 5. Wire up
 useEffect(() => { realHandlerRef.current = handleMessage; }, [handleMessage]);

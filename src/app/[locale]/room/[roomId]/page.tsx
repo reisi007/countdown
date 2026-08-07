@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { PeerManager, PeerMessage } from "@/lib/webrtc/peer";
@@ -53,25 +53,25 @@ export default function RoomPage() {
 
   const isHost = hostId !== null && myPeerId !== null && hostId === myPeerId;
 
-  const updateHost = useCallback((newHostId: string | null) => {
+  const updateHost = (newHostId: string | null) => {
     hostIdRef.current = newHostId;
     setHostId(newHostId);
-  }, []);
+  };
 
-  const recalculateHost = useCallback((currentPlayers: PlayerEntry[]) => {
+  const recalculateHost = (currentPlayers: PlayerEntry[]) => {
     const infoList: PlayerInfo[] = currentPlayers.map((p) => ({
       peerId: p.peerId,
       joinedAt: p.joinedAt,
     }));
     const elected = electHost(infoList);
     updateHost(elected);
-  }, [updateHost]);
+  };
 
-  const updatePlayerState = useCallback((updatedPlayers: PlayerEntry[]) => {
+  const updatePlayerState = (updatedPlayers: PlayerEntry[]) => {
     playersRef.current = updatedPlayers;
     setPlayers(updatedPlayers);
     recalculateHost(updatedPlayers);
-  }, [recalculateHost]);
+  };
 
   useEffect(() => {
     if (roomId === "new") {
@@ -338,7 +338,7 @@ export default function RoomPage() {
     };
   }, [roomId, locale, router, recalculateHost, updateHost, updatePlayerState]);
 
-  const changeNickname = useCallback((newName: string) => {
+  const changeNickname = (newName: string) => {
     const peer = peerRef.current;
     if (!peer) return;
     const trimmed = newName.trim().slice(0, 20);
@@ -354,7 +354,7 @@ export default function RoomPage() {
     peer.broadcast({ type: "nickname", payload: { peerId: myPeerId, nickname: trimmed } });
     setEditingNickname(false);
     trackEvent("nickname_change", { mode: "multi", locale, length: trimmed.length });
-  }, [roomId, updatePlayerState, locale]);
+  };
 
   const avatarColor = (peerId: string) => {
     const colors = ["bg-primary", "bg-secondary", "bg-accent", "bg-info", "bg-success", "bg-warning", "bg-error"];
@@ -363,7 +363,7 @@ export default function RoomPage() {
     return colors[Math.abs(hash) % colors.length];
   };
 
-  const copyInviteLink = useCallback(async () => {
+  const copyInviteLink = async () => {
     const url = `${window.location.origin}/${locale}/room/${roomId}`;
     try {
       await navigator.clipboard.writeText(url);
@@ -373,27 +373,24 @@ export default function RoomPage() {
     } catch {
       // Clipboard API not available
     }
-  }, [locale, roomId]);
+  };
 
-  const startGame = useCallback(
-    (gameType: GameType) => {
-      const peer = peerRef.current;
-      if (!peer) return;
-      sessionStorage.setItem(`timer_${roomId}`, String(timerEnabled ? timerDuration : 0));
-      peer.broadcast({ type: "game-start", payload: { gameType, timerEnabled, timerDuration } });
-      trackEvent("game_launch", {
-        mode: "multi",
-        locale,
-        game: gameType,
-        timer: timerEnabled ? timerDuration : 0,
-        players: playersRef.current.length,
-      });
-      router.push(`/${locale}/room/${roomId}/${gameType}`);
-    },
-    [locale, roomId, router, timerEnabled, timerDuration],
-  );
+  const startGame = (gameType: GameType) => {
+    const peer = peerRef.current;
+    if (!peer) return;
+    sessionStorage.setItem(`timer_${roomId}`, String(timerEnabled ? timerDuration : 0));
+    peer.broadcast({ type: "game-start", payload: { gameType, timerEnabled, timerDuration } });
+    trackEvent("game_launch", {
+      mode: "multi",
+      locale,
+      game: gameType,
+      timer: timerEnabled ? timerDuration : 0,
+      players: playersRef.current.length,
+    });
+    router.push(`/${locale}/room/${roomId}/${gameType}`);
+  };
 
-  const handleLeaveRoom = useCallback(() => {
+  const handleLeaveRoom = () => {
     trackEvent("leave_room", { mode: "multi", locale });
     const peer = peerRef.current;
     if (peer) {
@@ -406,7 +403,7 @@ export default function RoomPage() {
       releaseSessionPeer();
     }
     router.push(`/${locale}`);
-  }, [locale, roomId, router]);
+  };
 
   if (roomId === "new") {
     return (

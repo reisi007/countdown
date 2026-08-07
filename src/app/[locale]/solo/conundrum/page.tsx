@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { checkSolution, shuffleScrambled, resetScrambled, type ConundrumState } from "@/lib/game/conundrum";
@@ -52,7 +52,7 @@ export default function SoloConundrumPage() {
   const [timerEnabled, setTimerEnabled] = useState(false);
   const [timerDuration, setTimerDuration] = useState(30);
 
-  const initRound = useCallback(async () => {
+  const initRound = async () => {
     setLoading(true);
     setGuess("");
     setTimeLeft(timerDuration);
@@ -75,17 +75,17 @@ export default function SoloConundrumPage() {
     } finally {
       setLoading(false);
     }
-  }, [locale, timerDuration]);
+  };
 
-  const handleShuffle = useCallback(() => {
+  const handleShuffle = () => {
     setDisplayScrambled((s) => shuffleScrambled(s));
     trackEvent("shuffle", { mode: "solo", type: "conundrum", locale });
-  }, [locale]);
+  };
 
-  const handleReset = useCallback(() => {
+  const handleReset = () => {
     if (state) setDisplayScrambled(resetScrambled(state.scrambled));
     trackEvent("reset", { mode: "solo", type: "conundrum", locale });
-  }, [state, locale]);
+  };
 
   const prevPhaseRef = useRef<string | null>(null);
 
@@ -145,7 +145,7 @@ export default function SoloConundrumPage() {
     return () => clearInterval(interval);
   }, [state?.phase, state, timerEnabled]);
 
-  const handleSubmit = useCallback(() => {
+  const handleSubmit = () => {
     if (!state) return;
     const correct = checkSolution(state, guess);
     setFeedback(correct ? "correct" : "wrong");
@@ -156,16 +156,16 @@ export default function SoloConundrumPage() {
       locale,
       correct,
     });
-  }, [state, guess, locale]);
+  };
 
-  const handleNewRound = useCallback(() => {
+  const handleNewRound = () => {
     setStarted(false);
     setState(null);
     setDisplayScrambled("");
     setFeedback(null);
     setGuess("");
     trackEvent("new_round", { mode: "solo", type: "conundrum", locale });
-  }, [locale]);
+  };
 
   return (
     <div className="flex min-h-screen flex-col">

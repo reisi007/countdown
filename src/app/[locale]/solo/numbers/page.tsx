@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -110,7 +110,7 @@ function MiniCalculator({ locale }: { locale: Locale }) {
     setCalcResult(null);
   };
 
-  const evaluate = useCallback(() => {
+  const evaluate = () => {
     try {
       const cleaned = calcExpr.replace(/\s+/g, "");
       if (!cleaned) return;
@@ -119,7 +119,7 @@ function MiniCalculator({ locale }: { locale: Locale }) {
       setCalcResult(r);
       setCalcError(null);
     } catch { setCalcError(t.calcInvalid); setCalcResult(null); }
-  }, [calcExpr, t]);
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -211,9 +211,9 @@ export default function SoloNumbersPage() {
       });
     }
     prevPhaseRef.current = game.phase;
-  }, [game.phase, game.target, playerDiff, locale, timerEnabled, timerDuration]);
+  }, [game.phase, game.target, game.tiles, playerDiff, locale, timerEnabled, timerDuration]);
 
-  const handleNewRound = useCallback(() => {
+  const handleNewRound = () => {
     setGame(createNumbersGame());
     setResults([]);
     setUsedIndices(new Set());
@@ -227,9 +227,9 @@ export default function SoloNumbersPage() {
     setBestAttempt(null);
     setTimeLeft(timerDuration);
     trackEvent("new_round", { mode: "solo", type: "numbers", locale });
-  }, [timerDuration, locale]);
+  };
 
-  const selectNumber = useCallback((index: number) => {
+  const selectNumber = (index: number) => {
     if (game.phase !== "playing") return;
     if (showSolver) return;
     if (usedIndices.has(index)) return;
@@ -272,16 +272,16 @@ export default function SoloNumbersPage() {
       setSelected([index]);
       setPendingOp(null);
     }
-  }, [game.phase, game.target, game.tiles, showSolver, usedIndices, pendingOp, selected, nextId, t, results]);
+  };
 
-  const selectOp = useCallback((op: string) => {
+  const selectOp = (op: string) => {
     if (game.phase !== "playing") return;
     if (selected.length !== 1) { setFeedback("Select a number first"); return; }
     setPendingOp(op as Op);
     setFeedback(null);
-  }, [game.phase, selected]);
+  };
 
-  const handleUndo = useCallback(() => {
+  const handleUndo = () => {
     if (results.length === 0) return;
     const remaining = results.slice(0, -1);
     setResults(remaining);
@@ -295,9 +295,9 @@ export default function SoloNumbersPage() {
     setPendingOp(null);
     setFeedback(null);
     trackEvent("undo", { mode: "solo", type: "numbers", locale });
-  }, [results, locale]);
+  };
 
-  const handleGiveUp = useCallback(() => {
+  const handleGiveUp = () => {
     if (!bestAttempt) return;
     setPlayerDiff(bestAttempt.diff);
     setGame((g) => ({ ...g, phase: "scoring" }));
@@ -307,9 +307,9 @@ export default function SoloNumbersPage() {
       locale,
       diff: bestAttempt.diff,
     });
-  }, [bestAttempt, locale]);
+  };
 
-  const handleResetAll = useCallback(() => {
+  const handleResetAll = () => {
     setResults([]);
     setUsedIndices(new Set());
     setSelected([]);
@@ -321,9 +321,9 @@ export default function SoloNumbersPage() {
       locale,
       scope: "calculation",
     });
-  }, [locale]);
+  };
 
-  const handleFinish = useCallback(() => {
+  const handleFinish = () => {
     if (results.length === 0) { setFeedback(t.makeCalc); return; }
     const lastValue = results[results.length - 1].value;
     const diff = Math.abs(lastValue - game.target);
@@ -336,9 +336,9 @@ export default function SoloNumbersPage() {
       );
       setFeedback(t.offByTry.replace("{diff}", String(diff)));
     }
-  }, [results, game.target, t]);
+  };
 
-  const handleSolve = useCallback(() => {
+  const handleSolve = () => {
     const sol = solveNumbers(tiles, game.target);
     setSolution(sol);
     setShowSolver(true);
@@ -349,15 +349,15 @@ export default function SoloNumbersPage() {
       exact: sol.exact,
       difference: sol.difference,
     });
-  }, [tiles, game.target, locale]);
+  };
 
-  const handleTimeout = useCallback(() => {
+  const handleTimeout = () => {
     setPlayerDiff((diff) => {
       if (diff !== null) return diff;
       return bestAttempt ? bestAttempt.diff : Math.abs((results[results.length - 1]?.value ?? 0) - game.target);
     });
     setGame((g) => ({ ...g, phase: "scoring" }));
-  }, [bestAttempt, results, game.target]);
+  };
 
   useEffect(() => {
     if (game.phase === "playing") queueMicrotask(() => setTimeLeft(timerDuration));

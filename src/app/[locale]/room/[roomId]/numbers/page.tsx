@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { PeerManager, PeerMessage } from "@/lib/webrtc/peer";
@@ -113,7 +113,7 @@ export default function MultiplayerNumbersPage() {
       });
     }
     prevPhaseRef.current = phase;
-  }, [phase, submissions, target, locale, timerDuration]);
+  }, [phase, tiles, submissions, target, locale, timerDuration]);
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const tilesRef = useRef<number[]>([]);
@@ -154,14 +154,14 @@ export default function MultiplayerNumbersPage() {
   useEffect(() => { setIsHostFnRef.current = setIsHost; }, [setIsHost]);
   useEffect(() => { setHostNameFnRef.current = setHostName; }, [setHostName]);
 
-  const stopTimer = useCallback(() => {
+  const stopTimer = () => {
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
     }
-  }, []);
+  };
 
-  const endRound = useCallback((peer: PeerManager | null) => {
+  const endRound = (peer: PeerManager | null) => {
     const p = peer ?? peerRef.current;
     if (!p) return;
     stopTimer();
@@ -177,9 +177,9 @@ export default function MultiplayerNumbersPage() {
     }
 
     setPhase("finished");
-  }, [peerRef, stopTimer]);
+  };
 
-  const startTimer = useCallback((peer: PeerManager) => {
+  const startTimer = (peer: PeerManager) => {
     stopTimer();
     setTimeRemaining(timerDuration);
     if (timerDuration <= 0) return;
@@ -195,56 +195,53 @@ export default function MultiplayerNumbersPage() {
         return next;
       });
     }, 1000);
-  }, [timerDuration, endRound, stopTimer, peerRef]);
+  };
 
-  const submitResult = useCallback(
-    (value: number, diff: number) => {
-      const peer = peerRef.current;
-      if (!peer) return;
+  const submitResult = (value: number, diff: number) => {
+    const peer = peerRef.current;
+    if (!peer) return;
 
-      const pid = myPeerIdRef.current ?? "";
-      const nick = myNicknameRef.current;
-      const sub: PlayerSubmission = {
-        peerId: pid,
-        nickname: nick,
-        result: value,
-        diff,
-        submittedAt: Date.now(),
-      };
+    const pid = myPeerIdRef.current ?? "";
+    const nick = myNicknameRef.current;
+    const sub: PlayerSubmission = {
+      peerId: pid,
+      nickname: nick,
+      result: value,
+      diff,
+      submittedAt: Date.now(),
+    };
 
-      setMySubmission(sub);
-      setScoringStarted(true);
-      trackEvent("submit_result", {
-        mode: "multi",
-        type: "numbers",
-        locale,
-        diff,
-        exact: diff === 0,
-      });
+    setMySubmission(sub);
+    setScoringStarted(true);
+    trackEvent("submit_result", {
+      mode: "multi",
+      type: "numbers",
+      locale,
+      diff,
+      exact: diff === 0,
+    });
 
-      if (isHostRef.current) {
-        const best = keepBestSubmission(submissionsRef.current, sub);
-        peer.broadcast({ type: "num-submitted", payload: best });
-        const all = Array.from(submissionsRef.current.values());
-        setSubmissions(all);
-        peer.broadcast({ type: "num-submitted", payload: sub });
+    if (isHostRef.current) {
+      const best = keepBestSubmission(submissionsRef.current, sub);
+      peer.broadcast({ type: "num-submitted", payload: best });
+      const all = Array.from(submissionsRef.current.values());
+      setSubmissions(all);
+      peer.broadcast({ type: "num-submitted", payload: sub });
 
-        if (timerDuration <= 0) {
-          const uniquePlayers = all
-            .map((s) => s.peerId)
-            .filter((id, i, arr) => arr.indexOf(id) === i);
-          if (diff === 0 || uniquePlayers.length >= playerCountRef.current) {
-            endRound(peer);
-          }
+      if (timerDuration <= 0) {
+        const uniquePlayers = all
+          .map((s) => s.peerId)
+          .filter((id, i, arr) => arr.indexOf(id) === i);
+        if (diff === 0 || uniquePlayers.length >= playerCountRef.current) {
+          endRound(peer);
         }
-      } else {
-        peer.broadcast({ type: "num-submitted", payload: sub });
       }
-    },
-    [timerDuration, endRound, peerRef],
-  );
+    } else {
+      peer.broadcast({ type: "num-submitted", payload: sub });
+    }
+  };
 
-  const handleFinish = useCallback(() => {
+  const handleFinish = () => {
     if (results.length === 0) return;
     const lastValue = results[results.length - 1].value;
     const diff = Math.abs(lastValue - target);
@@ -259,9 +256,9 @@ export default function MultiplayerNumbersPage() {
       }
       submitResult(lastValue, diff);
     }
-  }, [results, target, bestAttempt, submitResult, t]);
+  };
 
-  const handleGiveUp = useCallback(() => {
+  const handleGiveUp = () => {
     if (!bestAttempt) return;
     submitResult(bestAttempt.result, bestAttempt.diff);
     trackEvent("give_up", {
@@ -270,88 +267,82 @@ export default function MultiplayerNumbersPage() {
       locale,
       diff: bestAttempt.diff,
     });
-  }, [bestAttempt, submitResult, locale]);
+  };
 
-  const selectNumber = useCallback(
-    (index: number) => {
-      if (phase !== "playing") return;
-      if (usedIndices.has(index)) return;
-      const allNumbers = [...tiles, ...results.map((r) => r.value)];
-      setFeedback(null);
+  const selectNumber = (index: number) => {
+    if (phase !== "playing") return;
+    if (usedIndices.has(index)) return;
+    const allNumbers = [...tiles, ...results.map((r) => r.value)];
+    setFeedback(null);
 
-      if (pendingOp) {
-        const aIdx = selected[0];
-        const bIdx = index;
-        const a = allNumbers[aIdx];
-        const b = allNumbers[bIdx];
-        const op = pendingOp;
-        let result: number | null = null;
+    if (pendingOp) {
+      const aIdx = selected[0];
+      const bIdx = index;
+      const a = allNumbers[aIdx];
+      const b = allNumbers[bIdx];
+      const op = pendingOp;
+      let result: number | null = null;
 
-        switch (op) {
-          case "+":
-            result = a + b;
-            break;
-          case "-":
-            if (a <= b) {
-              setFeedback(t.errPositiveSub);
-              setSelected([]);
-              setPendingOp(null);
-              return;
-            }
-            result = a - b;
-            break;
-          case "\u00d7":
-            result = a * b;
-            break;
-          case "\u00f7":
-            if (b === 0 || a % b !== 0) {
-              setFeedback(t.errExactDiv);
-              setSelected([]);
-              setPendingOp(null);
-              return;
-            }
-            result = a / b;
-            break;
-        }
+      switch (op) {
+        case "+":
+          result = a + b;
+          break;
+        case "-":
+          if (a <= b) {
+            setFeedback(t.errPositiveSub);
+            setSelected([]);
+            setPendingOp(null);
+            return;
+          }
+          result = a - b;
+          break;
+        case "\u00d7":
+          result = a * b;
+          break;
+        case "\u00f7":
+          if (b === 0 || a % b !== 0) {
+            setFeedback(t.errExactDiv);
+            setSelected([]);
+            setPendingOp(null);
+            return;
+          }
+          result = a / b;
+          break;
+      }
 
-        if (result === null || result <= 0) {
-          setFeedback(t.errPositiveResult);
-          setSelected([]);
-          setPendingOp(null);
-          return;
-        }
-
-        setUsedIndices((prev) => new Set([...prev, aIdx, bIdx]));
-        setResults((prev) => [
-          ...prev,
-          { id: nextId, value: result, a, b, op, aIdx, bIdx },
-        ]);
-        setNextId((n) => n + 1);
+      if (result === null || result <= 0) {
+        setFeedback(t.errPositiveResult);
         setSelected([]);
         setPendingOp(null);
-
-        if (result === target) {
-          handleFinish();
-        }
-      } else {
-        setSelected([index]);
-        setPendingOp(null);
+        return;
       }
-    },
-    [phase, usedIndices, pendingOp, selected, tiles, results, nextId, target, t, handleFinish],
-  );
 
-  const selectOp = useCallback(
-    (op: string) => {
-      if (phase !== "playing") return;
-      if (selected.length !== 1) return;
-      setPendingOp(op as Op);
-      setFeedback(null);
-    },
-    [phase, selected],
-  );
+      setUsedIndices((prev) => new Set([...prev, aIdx, bIdx]));
+      setResults((prev) => [
+        ...prev,
+        { id: nextId, value: result, a, b, op, aIdx, bIdx },
+      ]);
+      setNextId((n) => n + 1);
+      setSelected([]);
+      setPendingOp(null);
 
-  const handleUndo = useCallback(() => {
+      if (result === target) {
+        handleFinish();
+      }
+    } else {
+      setSelected([index]);
+      setPendingOp(null);
+    }
+  };
+
+  const selectOp = (op: string) => {
+    if (phase !== "playing") return;
+    if (selected.length !== 1) return;
+    setPendingOp(op as Op);
+    setFeedback(null);
+  };
+
+  const handleUndo = () => {
     if (results.length === 0) return;
     const remaining = results.slice(0, -1);
     setResults(remaining);
@@ -365,9 +356,9 @@ export default function MultiplayerNumbersPage() {
     setPendingOp(null);
     setFeedback(null);
     trackEvent("undo", { mode: "multi", type: "numbers", locale });
-  }, [results, locale]);
+  };
 
-  const handleResetAll = useCallback(() => {
+  const handleResetAll = () => {
     setResults([]);
     setUsedIndices(new Set());
     setSelected([]);
@@ -379,9 +370,9 @@ export default function MultiplayerNumbersPage() {
       locale,
       scope: "calculation",
     });
-  }, [locale]);
+  };
 
-  const completeTiles = useCallback(() => {
+  const completeTiles = () => {
     const t = Math.floor(Math.random() * 899) + 101;
     targetRef.current = t;
     setTarget(t);
@@ -405,9 +396,9 @@ export default function MultiplayerNumbersPage() {
       });
       if (timerDuration > 0) startTimer(peerRef.current);
     }
-  }, [timerDuration, startTimer, peerRef]);
+  };
 
-  const drawLarge = useCallback(() => {
+  const drawLarge = () => {
     if (!isHost || tilesRef.current.length >= 6 || allTilesRef.current.length === 0) return;
     const bigs = allTilesRef.current;
     const idx = Math.floor(Math.random() * bigs.length);
@@ -418,9 +409,9 @@ export default function MultiplayerNumbersPage() {
     tilesRef.current = newTiles;
     setTiles(newTiles);
     if (newTiles.length >= 6) completeTiles();
-  }, [isHost, completeTiles]);
+  };
 
-  const drawSmall = useCallback(() => {
+  const drawSmall = () => {
     if (!isHost || tilesRef.current.length >= 6 || smallRef.current.length === 0) return;
     const smalls = smallRef.current;
     const idx = Math.floor(Math.random() * smalls.length);
@@ -431,89 +422,86 @@ export default function MultiplayerNumbersPage() {
     tilesRef.current = newTiles;
     setTiles(newTiles);
     if (newTiles.length >= 6) completeTiles();
-  }, [isHost, completeTiles]);
+  };
 
-  const handleMessage = useCallback(
-    (msg: PeerMessage, peer: PeerManager) => {
-      switch (msg.type) {
-        case "player-list": {
-          const list = msg.payload as Array<{
-            peerId: string;
-            joinedAt: number;
-            nickname: string;
-          }>;
-          playerCountRef.current = list.length;
-          const hostId =
-            list.length > 0
-              ? list.reduce((a, p) => (p.joinedAt < a.joinedAt ? p : a)).peerId
-              : null;
-          setIsHostFnRef.current(hostId === peer.peerId);
-          const h = list.find((p) => p.peerId === hostId);
-          if (h) setHostNameFnRef.current(h.nickname);
-          break;
-        }
-        case "num-tiles-complete": {
-          const data = msg.payload as { tiles: number[]; target: number };
-          tilesRef.current = data.tiles;
-          targetRef.current = data.target;
-          setTiles(data.tiles);
-          setTarget(data.target);
-          setPhase("playing");
-          setResults([]);
-          setUsedIndices(new Set());
-          setSelected([]);
-          setPendingOp(null);
-          setFeedback(null);
-          setBestAttempt(null);
-          setNextId(1);
-          setMySubmission(null);
-          setSubmissions([]);
-          submissionsRef.current = new Map();
-          setScoringStarted(false);
-          setSolution(null);
-          if (timerDuration > 0) startTimer(peer);
-          break;
-        }
-        case "timer-sync": {
-          setTimeRemaining(msg.payload as number);
-          break;
-        }
-        case "num-submitted": {
-          const sub = msg.payload as PlayerSubmission;
-          keepBestSubmission(submissionsRef.current, sub);
-          const all = Array.from(submissionsRef.current.values());
-          setSubmissions(all);
-
-          if (isHostRef.current && timerDuration <= 0) {
-            const uniquePlayers = all
-              .map((s) => s.peerId)
-              .filter((id, i, arr) => arr.indexOf(id) === i);
-            if (sub.diff === 0 || uniquePlayers.length >= playerCountRef.current) {
-              endRound(peer);
-            }
-          }
-          if (sub.peerId === myPeerIdRef.current) {
-            setScoringStarted(true);
-            setMySubmission(sub);
-          }
-          break;
-        }
-        case "num-results": {
-          stopTimer();
-          const r = msg.payload as {
-            submissions: PlayerSubmission[];
-            solution: NumbersSolution | null;
-          };
-          setSubmissions(r.submissions);
-          setSolution(r.solution);
-          setPhase("finished");
-          setScoringStarted(true);
-          break;
-        }
+  const handleMessage = (msg: PeerMessage, peer: PeerManager) => {
+    switch (msg.type) {
+      case "player-list": {
+        const list = msg.payload as Array<{
+          peerId: string;
+          joinedAt: number;
+          nickname: string;
+        }>;
+        playerCountRef.current = list.length;
+        const hostId =
+          list.length > 0
+            ? list.reduce((a, p) => (p.joinedAt < a.joinedAt ? p : a)).peerId
+            : null;
+        setIsHostFnRef.current(hostId === peer.peerId);
+        const h = list.find((p) => p.peerId === hostId);
+        if (h) setHostNameFnRef.current(h.nickname);
+        break;
       }
-    },
-    [timerDuration, endRound, startTimer, stopTimer],
-  );
+      case "num-tiles-complete": {
+        const data = msg.payload as { tiles: number[]; target: number };
+        tilesRef.current = data.tiles;
+        targetRef.current = data.target;
+        setTiles(data.tiles);
+        setTarget(data.target);
+        setPhase("playing");
+        setResults([]);
+        setUsedIndices(new Set());
+        setSelected([]);
+        setPendingOp(null);
+        setFeedback(null);
+        setBestAttempt(null);
+        setNextId(1);
+        setMySubmission(null);
+        setSubmissions([]);
+        submissionsRef.current = new Map();
+        setScoringStarted(false);
+        setSolution(null);
+        if (timerDuration > 0) startTimer(peer);
+        break;
+      }
+      case "timer-sync": {
+        setTimeRemaining(msg.payload as number);
+        break;
+      }
+      case "num-submitted": {
+        const sub = msg.payload as PlayerSubmission;
+        keepBestSubmission(submissionsRef.current, sub);
+        const all = Array.from(submissionsRef.current.values());
+        setSubmissions(all);
+
+        if (isHostRef.current && timerDuration <= 0) {
+          const uniquePlayers = all
+            .map((s) => s.peerId)
+            .filter((id, i, arr) => arr.indexOf(id) === i);
+          if (sub.diff === 0 || uniquePlayers.length >= playerCountRef.current) {
+            endRound(peer);
+          }
+        }
+        if (sub.peerId === myPeerIdRef.current) {
+          setScoringStarted(true);
+          setMySubmission(sub);
+        }
+        break;
+      }
+      case "num-results": {
+        stopTimer();
+        const r = msg.payload as {
+          submissions: PlayerSubmission[];
+          solution: NumbersSolution | null;
+        };
+        setSubmissions(r.submissions);
+        setSolution(r.solution);
+        setPhase("finished");
+        setScoringStarted(true);
+        break;
+      }
+    }
+  };
 
   useEffect(() => {
     realHandlerRef.current = handleMessage;

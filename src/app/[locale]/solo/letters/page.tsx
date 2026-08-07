@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -90,13 +90,13 @@ export default function SoloLettersPage() {
     prevPhaseRef.current = game.phase;
   }, [game.phase, game.tiles, attempts, locale, timerEnabled, timerDuration]);
 
-  const finishRound = useCallback(() => {
+  const finishRound = () => {
     const word = playerWord.trim().toUpperCase();
     if (word && canFormWord(game.tiles, word)) {
       setAttempts((prev) => prev.some((a) => a.word === word) ? prev : [...prev, { word, valid: true }]);
     }
     setGame((g) => ({ ...g, phase: "scoring" }));
-  }, [playerWord, game.tiles]);
+  };
 
   useEffect(() => {
     if (game.phase !== "playing") return;
@@ -150,7 +150,7 @@ export default function SoloLettersPage() {
       .finally(() => setSearching(false));
   }, [game.phase, game.tiles, locale, longestWord, searching]);
 
-  const handleTileSelection = useCallback((type: "vowel" | "consonant") => {
+  const handleTileSelection = (type: "vowel" | "consonant") => {
     setGame((g) => {
       if (g.phase !== "drawing") return g;
       const next = type === "vowel" ? addVowel(g) : addConsonant(g);
@@ -161,19 +161,19 @@ export default function SoloLettersPage() {
     setPlayerWord("");
     setLongestWord(null);
     setAttempts([]);
-  }, [timerDuration]);
+  };
 
-  const handleShuffle = useCallback(() => {
+  const handleShuffle = () => {
     setDisplayTiles((d) => shuffleTiles(d));
     trackEvent("shuffle", { mode: "solo", type: "letters", locale });
-  }, [locale]);
+  };
 
-  const handleReset = useCallback(() => {
+  const handleReset = () => {
     setDisplayTiles(game.tiles);
     trackEvent("reset", { mode: "solo", type: "letters", locale });
-  }, [game.tiles, locale]);
+  };
 
-  const handleSubmit = useCallback(() => {
+  const handleSubmit = () => {
     const word = playerWord.trim().toUpperCase();
     if (!word) return;
 
@@ -187,9 +187,9 @@ export default function SoloLettersPage() {
       valid: formable,
       length: word.length,
     });
-  }, [playerWord, game.tiles, locale]);
+  };
 
-  const handleNewRound = useCallback(() => {
+  const handleNewRound = () => {
     setGame(createLettersGame());
     setDisplayTiles([]);
     setPlayerWord("");
@@ -197,7 +197,7 @@ export default function SoloLettersPage() {
     setLongestWord(null);
     setAttempts([]);
     trackEvent("new_round", { mode: "solo", type: "letters", locale });
-  }, [timerDuration, locale]);
+  };
 
   return (
     <div className="flex min-h-screen flex-col">
