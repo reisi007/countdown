@@ -237,7 +237,9 @@ If any command fails, fix the errors before marking work as done. No exceptions.
 
 | Pattern | Why | Fix |
 |---------|-----|-----|
-| `useMemo` / `useCallback` / `React.memo` / `forwardRef` in components | React Compiler is enabled (`next.config` `reactCompiler: true`) and auto-memoizes; manual memoization is an antipattern | Write plain functions/values; let the React Compiler handle memoization. Exception: ref-delegation pattern for hook-order safety stays |
+| `useMemo` / `useCallback` / `React.memo` / `forwardRef` in components | React Compiler is enabled and auto-memoizes; manual memoization is an antipattern | Write plain functions/values; let the React Compiler handle memoization. Exception: ref-delegation pattern for hook-order safety stays |
+
+> **React Compiler must stay enabled with Turbopack's Rust backend.** Next.js builds with Turbopack, which ignores the Babel-based `reactCompiler` transform (it is only wired into webpack). Without `experimental.turbopackRustReactCompiler: true`, the compiler silently emits unmemoized code and any `useEffect` whose deps include render-scoped functions loops forever. Keep both `reactCompiler: true` and `experimental.turbopackRustReactCompiler: true` in `next.config.ts`. Verify the compiler is active by grepping a built client chunk for `react.memo_cache_sentinel`.
 | `<style jsx>` in components | Causes `__webpack_require__.n is not a function` crash on soft navigation in Next.js 15 App Router | Define `@keyframes` in `globals.css` and reference by name in inline `style` or Tailwind `animate-*` utility |
 | Calling `useMultiplayerRound` after defining callbacks that use its return values | Temporal dead zone — TypeScript errors and potential runtime crashes | Use ref-delegation: pass `(msg, peer) => realHandlerRef.current(msg, peer)` as `onMessage`, define the real handler **after** the hook call, sync with `useEffect(() => { realHandlerRef.current = realHandler; }, [realHandler])` |
 | Inline styles for themed colors | Bypasses daisyUI theming | Use daisyUI color classes (`bg-primary`, `text-base-content`, etc.) |

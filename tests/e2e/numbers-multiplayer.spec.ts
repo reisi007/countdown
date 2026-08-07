@@ -5,7 +5,7 @@ test.describe.configure({ mode: "serial", timeout: 120000 });
 test.describe("Numbers round — solo", () => {
   test("page loads with drawing phase", async ({ page }) => {
     await page.goto("/en-GB/solo/numbers");
-    await expect(page.locator("text=Numbers Round")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole("heading", { name: "Numbers Round" })).toBeVisible({ timeout: 10000 });
     await expect(page.locator("text=Large")).toBeVisible();
     await expect(page.locator("text=Small")).toBeVisible();
   });
@@ -52,8 +52,8 @@ test.describe("Numbers round — multiplayer", () => {
 
     await hostPage.waitForURL(/\/numbers$/, { timeout: 10000 });
     await guestPage.waitForURL(/\/numbers$/, { timeout: 10000 });
-    await expect(hostPage.locator("text=Numbers Round")).toBeVisible();
-    await expect(guestPage.locator("text=Numbers Round")).toBeVisible();
+    await expect(hostPage.getByRole("heading", { name: "Numbers Round" })).toBeVisible();
+    await expect(guestPage.getByRole("heading", { name: "Numbers Round" })).toBeVisible();
 
     await hostCtx.close();
     await guestCtx.close();
@@ -93,8 +93,8 @@ test.describe("Numbers round — multiplayer", () => {
 
     await hostPage.waitForURL(/\/numbers$/, { timeout: 10000 });
     await guestPage.waitForURL(/\/numbers$/, { timeout: 10000 });
-    await expect(hostPage.locator("text=Numbers Round")).toBeVisible();
-    await expect(guestPage.locator("text=Numbers Round")).toBeVisible();
+    await expect(hostPage.getByRole("heading", { name: "Numbers Round" })).toBeVisible();
+    await expect(guestPage.getByRole("heading", { name: "Numbers Round" })).toBeVisible();
 
     const smallBtn = hostPage.locator("button:has-text(\"Small\")");
     await expect(smallBtn).toBeVisible({ timeout: 10000 });
