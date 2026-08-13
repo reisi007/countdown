@@ -1,12 +1,11 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { checkSolution, shuffleScrambled, resetScrambled, type ConundrumState } from "@/lib/game/conundrum";
 import { ConundrumGame } from "@/components/ConundrumGame";
 import { SoloTimerSetup } from "@/components/SoloTimerSetup";
-import { trackEvent } from "@/lib/tracking";
 
 const T = {
   "en-GB": {
@@ -79,48 +78,11 @@ export default function SoloConundrumPage() {
 
   const handleShuffle = () => {
     setDisplayScrambled((s) => shuffleScrambled(s));
-    trackEvent("shuffle", { mode: "solo", type: "conundrum", locale });
   };
 
   const handleReset = () => {
     if (state) setDisplayScrambled(resetScrambled(state.scrambled));
-    trackEvent("reset", { mode: "solo", type: "conundrum", locale });
   };
-
-  const prevPhaseRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    if (!state) {
-      prevPhaseRef.current = null;
-      return;
-    }
-    const prev = prevPhaseRef.current;
-    if (prev !== "scrambled" && state.phase === "scrambled") {
-      trackEvent("game_start", {
-        mode: "solo",
-        type: "conundrum",
-        locale,
-        timer: timerEnabled ? timerDuration : 0,
-      });
-    }
-    if (prev !== "solved" && state.phase === "solved") {
-      trackEvent("round_complete", {
-        mode: "solo",
-        type: "conundrum",
-        locale,
-        solved: feedback === "correct",
-      });
-    }
-    if (prev !== "timeout" && state.phase === "timeout") {
-      trackEvent("round_complete", {
-        mode: "solo",
-        type: "conundrum",
-        locale,
-        solved: false,
-      });
-    }
-    prevPhaseRef.current = state.phase;
-  }, [state, feedback, locale, timerEnabled, timerDuration]);
 
   useEffect(() => {
     if (!started) return;
@@ -150,12 +112,6 @@ export default function SoloConundrumPage() {
     const correct = checkSolution(state, guess);
     setFeedback(correct ? "correct" : "wrong");
     setState((s) => s ? { ...s, phase: "solved", solution: guess } : null);
-    trackEvent("guess_submit", {
-      mode: "solo",
-      type: "conundrum",
-      locale,
-      correct,
-    });
   };
 
   const handleNewRound = () => {
@@ -164,7 +120,6 @@ export default function SoloConundrumPage() {
     setDisplayScrambled("");
     setFeedback(null);
     setGuess("");
-    trackEvent("new_round", { mode: "solo", type: "conundrum", locale });
   };
 
   return (

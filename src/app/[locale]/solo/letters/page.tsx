@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -17,7 +17,6 @@ import {
 } from "@/lib/game/letters";
 import { LettersGame } from "@/components/LettersGame";
 import { SoloTimerSetup } from "@/components/SoloTimerSetup";
-import { trackEvent } from "@/lib/tracking";
 
 const T = {
   "en-GB": {
@@ -58,37 +57,6 @@ export default function SoloLettersPage() {
   const [searching, setSearching] = useState(false);
   const [timerEnabled, setTimerEnabled] = useState(false);
   const [timerDuration, setTimerDuration] = useState(30);
-
-  const prevPhaseRef = useRef(game.phase);
-
-  useEffect(() => {
-    const prev = prevPhaseRef.current;
-    if (prev !== "playing" && game.phase === "playing") {
-      const vowels = game.tiles.filter((t) => t.type === "vowel").length;
-      trackEvent("game_start", {
-        mode: "solo",
-        type: "letters",
-        locale,
-        timer: timerEnabled ? timerDuration : 0,
-        vowels,
-        consonants: game.tiles.length - vowels,
-      });
-    }
-    if (prev !== "scoring" && game.phase === "scoring") {
-      const best = attempts
-        .filter((a) => a.valid)
-        .sort((a, b) => b.word.length - a.word.length)[0];
-      trackEvent("round_complete", {
-        mode: "solo",
-        type: "letters",
-        locale,
-        best_length: best?.word.length ?? 0,
-        valid_attempts: attempts.filter((a) => a.valid).length,
-        attempts: attempts.length,
-      });
-    }
-    prevPhaseRef.current = game.phase;
-  }, [game.phase, game.tiles, attempts, locale, timerEnabled, timerDuration]);
 
   const finishRound = () => {
     const word = playerWord.trim().toUpperCase();
@@ -165,12 +133,10 @@ export default function SoloLettersPage() {
 
   const handleShuffle = () => {
     setDisplayTiles((d) => shuffleTiles(d));
-    trackEvent("shuffle", { mode: "solo", type: "letters", locale });
   };
 
   const handleReset = () => {
     setDisplayTiles(game.tiles);
-    trackEvent("reset", { mode: "solo", type: "letters", locale });
   };
 
   const handleSubmit = () => {
@@ -180,13 +146,6 @@ export default function SoloLettersPage() {
     const formable = canFormWord(game.tiles, word);
     setAttempts((prev) => [...prev, { word, valid: formable }]);
     setPlayerWord("");
-    trackEvent("word_submit", {
-      mode: "solo",
-      type: "letters",
-      locale,
-      valid: formable,
-      length: word.length,
-    });
   };
 
   const handleNewRound = () => {
@@ -196,7 +155,6 @@ export default function SoloLettersPage() {
     setTimeLeft(timerDuration);
     setLongestWord(null);
     setAttempts([]);
-    trackEvent("new_round", { mode: "solo", type: "letters", locale });
   };
 
   return (

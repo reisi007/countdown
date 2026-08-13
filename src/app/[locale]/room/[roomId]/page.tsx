@@ -10,7 +10,6 @@ import {
 import type { PlayerInfo } from "@/lib/webrtc/leader-election";
 import type { PlayerRecord } from "@/lib/db";
 import { normalizeGermanWord } from "@/lib/game/letters";
-import { trackEvent } from "@/lib/tracking";
 
 type PlayerEntry = PlayerInfo & { nickname: string };
 type NicknameMap = Record<string, string>;
@@ -246,11 +245,6 @@ export default function RoomPage() {
         });
         setPlayers(roomPlayers);
         recalculateHost(roomPlayers);
-        trackEvent("room_join", {
-          mode: "multi",
-          locale,
-          players: roomPlayers.length,
-        });
 
         for (const p of roomPlayers) {
           if (p.peerId !== peer.peerId) {
@@ -353,7 +347,6 @@ export default function RoomPage() {
     updatePlayerState(updated);
     peer.broadcast({ type: "nickname", payload: { peerId: myPeerId, nickname: trimmed } });
     setEditingNickname(false);
-    trackEvent("nickname_change", { mode: "multi", locale, length: trimmed.length });
   };
 
   const avatarColor = (peerId: string) => {
@@ -369,7 +362,6 @@ export default function RoomPage() {
       await navigator.clipboard.writeText(url);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-      trackEvent("copy_invite", { mode: "multi", locale });
     } catch {
       // Clipboard API not available
     }
@@ -380,18 +372,10 @@ export default function RoomPage() {
     if (!peer) return;
     sessionStorage.setItem(`timer_${roomId}`, String(timerEnabled ? timerDuration : 0));
     peer.broadcast({ type: "game-start", payload: { gameType, timerEnabled, timerDuration } });
-    trackEvent("game_launch", {
-      mode: "multi",
-      locale,
-      game: gameType,
-      timer: timerEnabled ? timerDuration : 0,
-      players: playersRef.current.length,
-    });
     router.push(`/${locale}/room/${roomId}/${gameType}`);
   };
 
   const handleLeaveRoom = () => {
-    trackEvent("leave_room", { mode: "multi", locale });
     const peer = peerRef.current;
     if (peer) {
       const pid = peer.peerId;
@@ -568,11 +552,6 @@ export default function RoomPage() {
                           key={game}
                           onClick={() => {
                             setSelectedGame(game);
-                            trackEvent("game_type_selected", {
-                              mode: "multi",
-                              locale,
-                              game,
-                            });
                           }}
                           className={`flex items-center gap-3 p-3 rounded-btn border-2 text-left transition-all ${
                             selectedGame === game
@@ -612,12 +591,6 @@ export default function RoomPage() {
                     onChange={() => {
                       const enabled = !timerEnabled;
                       setTimerEnabled(enabled);
-                      trackEvent("timer_config", {
-                        mode: "multi",
-                        locale,
-                        enabled,
-                        duration: enabled ? timerDuration : 0,
-                      });
                     }}
                   />
                 </div>
@@ -632,12 +605,6 @@ export default function RoomPage() {
                           className={`btn btn-xs ${timerDuration === d ? "btn-primary" : "btn-ghost"}`}
                           onClick={() => {
                             setTimerDuration(d);
-                            trackEvent("timer_config", {
-                              mode: "multi",
-                              locale,
-                              enabled: true,
-                              duration: d,
-                            });
                           }}
                         >
                           {d}s
