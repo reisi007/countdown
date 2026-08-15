@@ -51,6 +51,7 @@ export default function MultiplayerConundrumPage() {
   const answerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const answerRef = useRef("");
   const buzzerIdRef = useRef<string | null>(null);
+  const buzzerNameRef = useRef("");
   const hasBuzzedRef = useRef(false);
   const originalScrambledRef = useRef("");
   const roundActiveRef = useRef(false);
@@ -104,7 +105,7 @@ export default function MultiplayerConundrumPage() {
           peerId: buzzerIdRef.current,
           guess: "",
           correct: false,
-          nickname: buzzerName,
+          nickname: buzzerNameRef.current,
           answer: answerRef.current,
         },
       });
@@ -219,6 +220,7 @@ export default function MultiplayerConundrumPage() {
           setBuzzerId(buzz.peerId);
           buzzerIdRef.current = buzz.peerId;
           setBuzzerName(buzz.nickname);
+          buzzerNameRef.current = buzz.nickname;
           setPhase("buzzed");
           stopRoundTimer();
           peer.broadcast({
@@ -235,6 +237,7 @@ export default function MultiplayerConundrumPage() {
         setBuzzerId(granted.peerId);
         buzzerIdRef.current = granted.peerId;
         setBuzzerName(granted.nickname);
+        buzzerNameRef.current = granted.nickname;
         setPhase("buzzed");
         stopRoundTimer();
         if (granted.peerId === myPeerIdRef.current) {
@@ -312,6 +315,7 @@ export default function MultiplayerConundrumPage() {
   useEffect(() => { myPeerIdRef.current = myPeerId; }, [myPeerId]);
   useEffect(() => { myNicknameRef.current = myNickname; }, [myNickname]);
   useEffect(() => { setIsHostFnRef.current = setIsHost; }, [setIsHost]);
+  useEffect(() => { buzzerNameRef.current = buzzerName; }, [buzzerName]);
 
   function buzz() {
     const peer = peerRef.current;

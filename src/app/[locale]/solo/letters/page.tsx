@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -66,6 +66,9 @@ export default function SoloLettersPage() {
     setGame((g) => ({ ...g, phase: "scoring" }));
   };
 
+  const finishRoundRef = useRef(finishRound);
+  useEffect(() => { finishRoundRef.current = finishRound; }, [finishRound]);
+
   useEffect(() => {
     if (game.phase !== "playing") return;
     if (!timerEnabled) return;
@@ -74,7 +77,7 @@ export default function SoloLettersPage() {
       setTimeLeft((t) => {
         if (t <= 1) {
           clearInterval(interval);
-          finishRound();
+          finishRoundRef.current();
           return 0;
         }
         return t - 1;
@@ -82,7 +85,7 @@ export default function SoloLettersPage() {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [game.phase, timerEnabled, finishRound]);
+  }, [game.phase, timerEnabled]);
 
   useEffect(() => {
     queueMicrotask(() => {

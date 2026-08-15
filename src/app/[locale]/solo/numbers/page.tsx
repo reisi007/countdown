@@ -120,17 +120,20 @@ function MiniCalculator({ locale }: { locale: Locale }) {
     } catch { setCalcError(t.calcInvalid); setCalcResult(null); }
   };
 
+  const evaluateRef = useRef(evaluate);
+  useEffect(() => { evaluateRef.current = evaluate; }, [evaluate]);
+
   useEffect(() => {
     if (!open) return;
     const handler = (e: KeyboardEvent) => {
       if (e.key === "Escape") { setOpen(false); return; }
       if ("0123456789+-*/()".includes(e.key)) { e.preventDefault(); append(e.key); }
-      else if (e.key === "Enter") { e.preventDefault(); evaluate(); }
+      else if (e.key === "Enter") { e.preventDefault(); evaluateRef.current(); }
       else if (e.key === "Backspace") { e.preventDefault(); setCalcExpr((p) => p.slice(0, -1)); setCalcResult(null); setCalcError(null); }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [open, evaluate]);
+  }, [open]);
 
   useEffect(() => { inputRef.current?.focus(); }, [open]);
 
@@ -309,6 +312,9 @@ export default function SoloNumbersPage() {
     setGame((g) => ({ ...g, phase: "scoring" }));
   };
 
+  const handleTimeoutRef = useRef(handleTimeout);
+  useEffect(() => { handleTimeoutRef.current = handleTimeout; }, [handleTimeout]);
+
   useEffect(() => {
     if (game.phase === "playing") queueMicrotask(() => setTimeLeft(timerDuration));
   }, [game.phase, timerDuration]);
@@ -321,7 +327,7 @@ export default function SoloNumbersPage() {
       setTimeLeft((t) => {
         if (t <= 1) {
           clearInterval(interval);
-          handleTimeout();
+          handleTimeoutRef.current();
           return 0;
         }
         return t - 1;
@@ -329,7 +335,7 @@ export default function SoloNumbersPage() {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [game.phase, timerEnabled, handleTimeout]);
+  }, [game.phase, timerEnabled]);
 
   return (
     <div className="flex min-h-screen flex-col">

@@ -1,6 +1,8 @@
 import fs from "fs";
 import wordListPath from "word-list";
-import germanWords from "an-array-of-german-words";
+import nspell from "nspell";
+import germanDictionary from "dictionary-de";
+import { normalizeGermanWord } from "@/lib/game/letters";
 
 const dictionaryCache: Map<string, Set<string>> = new Map();
 
@@ -27,8 +29,53 @@ function loadEnglishWords(): Set<string> {
   );
 }
 
+let germanSpeller: nspell | null = null;
+
+function loadGermanSpeller(): nspell {
+  if (!germanSpeller) {
+    germanSpeller = nspell({
+      aff: Buffer.from(germanDictionary.aff),
+      dic: Buffer.from(germanDictionary.dic),
+    });
+  }
+  return germanSpeller;
+}
+
+const GERMAN_DIGRAPHS: Array<[string, string]> = [
+  ["AE", "\u00c4"],
+  ["OE", "\u00d6"],
+  ["UE", "\u00dc"],
+  ["SS", "\u00df"],
+];
+
+/**
+ * The letters game only draws A–Z tiles, so umlaut words arrive in their
+ * ASCII form ("NATUERLICH" for "NATÜRLICH"). Map the digraphs back so the
+ * hunspell dictionary can validate them.
+ */
+function asciiToGerman(word: string): string {
+  return GERMAN_DIGRAPHS.reduce((acc, [from, to]) => acc.replaceAll(from, to), word);
+}
+
+/**
+ * German validation uses the igerman98 hunspell dictionary via nspell, which
+ * understands inflections ("GEHT", "SPIELTE", "SCHÖNE"). The returned Set is
+ * a fast-path index over the base forms plus their ASCII variants; it powers
+ * the longest-word solver, whose tiles are ASCII-only.
+ */
 function loadGermanWords(): Set<string> {
-  return new Set((germanWords as string[]).map((w) => w.toUpperCase()));
+  const content = Buffer.from(germanDictionary.dic).toString("utf-8");
+  const words = new Set<string>();
+
+  for (const line of content.split("\n")) {
+    const word = line.split(/[/\t]/)[0].trim();
+    if (!/^[A-Za-z\u00c4\u00d6\u00dc\u00e4\u00f6\u00fc\u00df]{2,9}$/.test(word)) continue;
+    const upper = word.toUpperCase();
+    words.add(upper);
+    words.add(normalizeGermanWord(upper));
+  }
+
+  return words;
 }
 
 export function resolveLocale(locale: string): string {
@@ -51,8 +98,21 @@ export function loadDictionary(locale: string): Set<string> {
 }
 
 export function isValidWord(locale: string, word: string): boolean {
-  const dictionary = loadDictionary(locale);
-  return dictionary.has(word.toUpperCase().trim());
+  const resolved = resolveLocale(locale);
+  const clean = word.toUpperCase().trim();
+  if (clean.length < 2) return false;
+
+  if (resolved === "de") {
+    const speller = loadGermanSpeller();
+    if (speller.correct(clean)) return true;
+    if (loadDictionary(locale).has(clean)) return true;
+    if (/[\u00c4\u00d6\u00dc]/.test(clean)) return false;
+    const converted = asciiToGerman(clean);
+    if (converted !== clean) return speller.correct(converted);
+    return false;
+  }
+
+  return loadDictionary(locale).has(clean);
 }
 
 export function getAvailableLocales(): string[] {

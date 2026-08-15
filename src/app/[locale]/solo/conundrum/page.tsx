@@ -46,35 +46,9 @@ export default function SoloConundrumPage() {
   const [guess, setGuess] = useState("");
   const [timeLeft, setTimeLeft] = useState(30);
   const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
-  const [, setLoading] = useState(false);
   const [started, setStarted] = useState(false);
   const [timerEnabled, setTimerEnabled] = useState(false);
   const [timerDuration, setTimerDuration] = useState(30);
-
-  const initRound = async () => {
-    setLoading(true);
-    setGuess("");
-    setTimeLeft(timerDuration);
-    setFeedback(null);
-
-    try {
-      const res = await fetch(`/api/conundrum?locale=${locale}`);
-      const data = await res.json();
-      setState({
-        answer: data.answer,
-        scrambled: data.scrambled,
-        buzzerId: null,
-        solution: null,
-        phase: "scrambled",
-        timeRemaining: data.timeRemaining || 30,
-      });
-      setDisplayScrambled(data.scrambled);
-    } catch {
-      setState(null);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleShuffle = () => {
     setDisplayScrambled((s) => shuffleScrambled(s));
@@ -86,11 +60,38 @@ export default function SoloConundrumPage() {
 
   useEffect(() => {
     if (!started) return;
-    queueMicrotask(initRound);
-  }, [started, initRound]);
+    let cancelled = false;
+
+    const loadRound = async () => {
+      setGuess("");
+      setTimeLeft(timerDuration);
+      setFeedback(null);
+      try {
+        const res = await fetch(`/api/conundrum?locale=${locale}`);
+        const data = await res.json();
+        if (cancelled) return;
+        setState({
+          answer: data.answer,
+          scrambled: data.scrambled,
+          buzzerId: null,
+          solution: null,
+          phase: "scrambled",
+          timeRemaining: data.timeRemaining || 30,
+        });
+        setDisplayScrambled(data.scrambled);
+      } catch {
+        if (!cancelled) setState(null);
+      }
+    };
+
+    loadRound();
+    return () => {
+      cancelled = true;
+    };
+  }, [started, locale, timerDuration]);
 
   useEffect(() => {
-    if (!state || state.phase !== "scrambled") return;
+    if (state?.phase !== "scrambled") return;
     if (!timerEnabled) return;
 
     const interval = setInterval(() => {
@@ -105,7 +106,7 @@ export default function SoloConundrumPage() {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [state?.phase, state, timerEnabled]);
+  }, [state?.phase, timerEnabled]);
 
   const handleSubmit = () => {
     if (!state) return;

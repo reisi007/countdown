@@ -2,8 +2,8 @@
 
 ## Status
 
-- 245 unit tests passing (`pnpm test`)
-- 16 E2E tests passing (`pnpm test:e2e` after `pnpm build`)
+- 249 unit tests passing (`pnpm test`)
+- 13 E2E tests passing (`pnpm test:e2e` after `pnpm build`)
 - 0 TypeScript errors
 - Express + Next.js + PeerJS server on port 3000
 
@@ -18,6 +18,8 @@ Run the matching section before any change:
 #tag: letters      -> npx vitest run tests/unit/letters-validator.test.ts
 #tag: leader-elec  -> npx vitest run tests/unit/leader-election.test.ts
 #tag: conundrum    -> npx vitest run tests/unit/conundrum.test.ts
+#tag: conundrum-page -> npx vitest run tests/unit/solo-conundrum-page.test.tsx
+#tag: dictionaries -> npx vitest run tests/unit/dictionaries.test.ts
 #tag: db           -> npx vitest run tests/unit/db.test.ts
 #tag: scoring      -> npx vitest run tests/unit/scoring.test.ts
 ```
@@ -26,7 +28,7 @@ Run the matching section before any change:
 
 | # | Description | Priority |
 |---|-------------|----------|
-| 1 | **Conundrum buzzer test**: the `conundrum/page.tsx` multiplayer state machine (buzz/grant/guess/result/timeout) has no automated test. The conundrum pure functions are tested (32 unit tests) but the message-driven game flow is not. | 🟡 medium |
+| 1 | **Conundrum buzzer test**: the multiplayer `conundrum/page.tsx` state machine (buzz/grant/guess/result/timeout) has no automated test. The SOLO conundrum page is now covered by component tests (`solo-conundrum-page.test.tsx`), and the pure functions are tested (32 unit tests), but the message-driven multiplayer flow is not. | 🟡 medium |
 | 5 | **Round continuity / scoring UI**: no round counter, no "best of N", no chooser rotation. Scores live only in `sessionStorage` (`scores_${roomId}`) and are not shown on the lobby or game pages after navigation. Missing persistent score panel + round rotation across letters/numbers/conundrum. | 🟡 medium |
 | 8 | **E2E coverage for setup fix**: `numbers-multiplayer.spec.ts` now covers the host-sees-chooser-controls flow (host navigates lobby → numbers, Small button renders, target shown to both). Still missing: Playwright coverage for host navigating lobby → letters (Vowel/Consonant render) and for conundrum host auto-start (host lands on conundrum page and scrambled tiles appear without manual action). | 🟡 medium |
 | 9 | **Heartbeat/staleness**: game pages heartbeat every 10s via `useMultiplayerRound`, but a backgrounded tab may be pruned (`STALE_TIMEOUT = 20s` in `db.ts`) and silently dropped from host election. Consider tying pruning to actual PeerJS connection state. | 🟢 low |
@@ -42,6 +44,7 @@ Run the matching section before any change:
 - 2026-08-01 #2: Completed item 2 (E2E in CI). `build.yml` gained a parallel `e2e` job (`npx playwright install --with-deps chromium` → `pnpm build` → `pnpm test:e2e`, Playwright HTML report uploaded as artifact) running alongside `test`; `build-and-push` now needs both `test` and `e2e`.
 - 2026-08-01 #3: Removed completed item 3 (numbers resubmit). `keepBestSubmission` (commit `b2ffa19`) lets players resubmit and keeps the closest result; covered by `scoring.test.ts`. Updated item 8 to note that `numbers-multiplayer.spec.ts` now covers the host-chooser flow. 245 unit tests + 16 E2E tests pass.
 - 2026-08-07: Fixed CI E2E failures caused by the React Compiler not actually compiling under Next.js 16.3 + Turbopack (the Babel-based `reactCompiler` transform is only wired into webpack). The lobby page's `useEffect` deps (`recalculateHost`/`updateHost`/`updatePlayerState`) were recreated every render → infinite re-render loop (~3300 runs/5s) → host-failover and numbers-round-start E2E tests failed. Fix: enable `experimental.turbopackRustReactCompiler: true` in next.config.ts (native Rust compiler, introduced in Next 16.3) — verified active via `react.memo_cache_sentinel` in built chunks; hardened `numbers-multiplayer.spec.ts` with a role-based heading locator (the `text=Numbers Round` locator also matched the Next.js route announcer div). 245 unit + 16 E2E tests pass; typecheck, build, lint green. AGENTS.md updated with a note that both `reactCompiler: true` and `experimental.turbopackRustReactCompiler: true` are required under Turbopack.
+- 2026-08-15: **Solo conundrum stabilization fix + German dictionary overhaul.** (a) Fixed a React-Compiler regression in `solo/conundrum/page.tsx`: the async `initRound` is NOT memoized by the compiler (verified in the built chunk), so the effect `[started, initRound]` re-ran on every render and re-fetched a NEW random word — tiles kept changing, the guess got wiped, the timer reset. Fix: inline the round loader in the effect with primitive deps `[started, locale, timerDuration]` + cancellation; dropped the dead `loading` state; tightened the timer effect to `[state?.phase, timerEnabled]`. Added `tests/unit/solo-conundrum-page.test.tsx` (3 component tests, happy-dom + @testing-library/react) — verified they fail on the pre-fix code. Added an E2E test `solo conundrum round loads once and stays stable` in `tests/e2e/multiplayer.spec.ts`. (b) Hardened the same unstable-function-in-effect-deps class elsewhere: solo letters (`finishRound`) and solo numbers (`handleTimeout`, MiniCalculator `evaluate`) timer/keydown effects now use ref-delegation; fixed a stale `buzzerName` closure in multiplayer conundrum's `startAnswerTimer`. (c) Replaced the German dictionary (`an-array-of-german-words`, full of scraper fragments like "IE"/"CH"/"ND"/"ESCHICHTE"/"martphone") with the igerman98 hunspell dictionary (`dictionary-de`) validated via `nspell` in `dictionaries.ts`; ASCII umlaut digraphs (AE/OE/UE/SS) map back to Ä/Ö/Ü/ß so A–Z-tile input like "NATUERLICH" validates, and the longest-word solver returns real words. Added `tests/unit/dictionaries.test.ts` (6 tests). New deps: nspell + dictionary-de (prod), happy-dom + @testing-library/react + @testing-library/dom + @types/nspell (dev). Status re-verified: 249 unit + 13 E2E tests pass; typecheck, build, lint green.
 
 ## Rules
 - Only open or unverified TODOs stay in this file

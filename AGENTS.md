@@ -50,7 +50,7 @@ countdown/
 │   │   │   ├── peer.ts            # PeerJS wrapper & connection manager
 │   │   │   └── leader-election.ts # Host election & failover logic
 │   │   ├── i18n/
-│   │   │   └── dictionaries/      # CSW (en-GB), NWL (en-US), German word lists
+│   │   │   └── dictionaries.ts    # English via `word-list`; German via `dictionary-de` + nspell
 │   │   └── db.ts                  # In-memory store (no persistent DB)
 │   ├── styles/
 │   │   └── globals.css            # Tailwind v4 imports + daisyUI theme
@@ -64,9 +64,13 @@ countdown/
 │   ├── unit/
 │   │   ├── numbers-solver.test.ts
 │   │   ├── letters-validator.test.ts
+│   │   ├── conundrum.test.ts
+│   │   ├── dictionaries.test.ts
+│   │   ├── solo-conundrum-page.test.tsx  # Component tests (happy-dom)
 │   │   └── leader-election.test.ts
 │   └── e2e/
-│       └── multiplayer.spec.ts
+│       ├── multiplayer.spec.ts
+│       └── numbers-multiplayer.spec.ts
 ├── .github/
 │   └── workflows/
 │       └── deploy.yml             # Build → push GHCR → Portainer webhook
@@ -105,9 +109,15 @@ Word dictionaries are loaded into memory on server start.
 ### Word Dictionaries (In-Memory)
 | Locale | Dictionary |
 |--------|-------------|
-| en-GB | Collins Scrabble Words (CSW) |
-| en-US | NASPA Word List (NWL) |
-| de | German standard dictionary |
+| en-GB | `word-list` npm (SCOWL) |
+| en-US | `word-list` npm (SCOWL) |
+| de | igerman98 hunspell dictionary (`dictionary-de`) validated via `nspell` |
+
+German validation runs through `nspell`, so inflected forms ("GEHT", "SPIELTE",
+"SCHÖNE") are accepted. The letters game draws A–Z tiles only, so umlauts arrive
+in ASCII form ("NATUERLICH"); `isValidWord` maps AE/OE/UE/SS digraphs back to
+Ä/Ö/Ü/ß before asking nspell. The longest-word solver uses a precomputed index
+of base forms plus their ASCII variants.
 
 ## UI Conventions (Tailwind CSS v4 + daisyUI v5)
 

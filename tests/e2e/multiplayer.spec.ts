@@ -66,6 +66,24 @@ test.describe("Multiplayer flow", () => {
     await expect(page.locator("text=Small")).toBeVisible();
   });
 
+  test("solo conundrum round loads once and stays stable", async ({ page }) => {
+    await page.goto("/en-GB/solo/conundrum");
+    await page.locator("input.toggle").click();
+    await page.locator("button:has-text(\"Start\")").click();
+
+    const tiles = page.locator("kbd.border-warning");
+    await expect(tiles.first()).toBeVisible({ timeout: 10000 });
+    const first = await tiles.allTextContents();
+
+    await page.waitForTimeout(2000);
+    expect(await tiles.allTextContents()).toEqual(first);
+
+    await page.locator("input.text-center").first().fill("ADV");
+    await page.waitForTimeout(500);
+    expect(await tiles.allTextContents()).toEqual(first);
+    await expect(page.locator("input.text-center").first()).toHaveValue("ADV");
+  });
+
   test("locale redirect works", async ({ page }) => {
     await page.goto("/");
     const url = page.url();
