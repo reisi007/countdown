@@ -97,3 +97,80 @@ test.describe("Multiplayer flow", () => {
     await expect(page.locator("text=Countdown")).toBeVisible();
   });
 });
+
+test.describe("Multiplayer round navigation", () => {
+  test("host starts a letters round and Vowel/Consonant controls render", async ({ browser }) => {
+    const hostCtx = await browser.newContext();
+    const guestCtx = await browser.newContext();
+    const hostPage = await hostCtx.newPage();
+    const guestPage = await guestCtx.newPage();
+
+    await hostPage.goto("/en-GB");
+    await hostPage.click("text=Multiplayer");
+    await hostPage.waitForURL(
+      (url) => url.pathname.includes("/room/") && !url.pathname.endsWith("/room/new"),
+    );
+
+    const roomUrl = hostPage.url();
+    const roomId = roomUrl.split("/room/")[1];
+
+    await guestPage.goto(`/en-GB/room/${roomId}`);
+
+    await expect(hostPage.locator("text=Players")).toBeVisible({ timeout: 15000 });
+    await expect(guestPage.locator("text=Players")).toBeVisible({ timeout: 15000 });
+
+    await expect(hostPage.locator("button:has-text(\"Start Letters\")")).toBeVisible({ timeout: 8000 });
+    await hostPage.locator("button:has-text(\"Start Letters\")").click();
+
+    await hostPage.waitForURL(/\/letters$/, { timeout: 10000 });
+    await guestPage.waitForURL(/\/letters$/, { timeout: 10000 });
+    await expect(hostPage.getByRole("heading", { name: "Letters Round" })).toBeVisible();
+    await expect(guestPage.getByRole("heading", { name: "Letters Round" })).toBeVisible();
+
+    await expect(hostPage.locator("text=Vowel")).toBeVisible({ timeout: 10000 });
+    await expect(hostPage.locator("text=Consonant")).toBeVisible({ timeout: 10000 });
+
+    await hostCtx.close();
+    await guestCtx.close();
+  });
+
+  test("host starts a conundrum round and scrambled tiles auto-appear", async ({ browser }) => {
+    const hostCtx = await browser.newContext();
+    const guestCtx = await browser.newContext();
+    const hostPage = await hostCtx.newPage();
+    const guestPage = await guestCtx.newPage();
+
+    await hostPage.goto("/en-GB");
+    await hostPage.click("text=Multiplayer");
+    await hostPage.waitForURL(
+      (url) => url.pathname.includes("/room/") && !url.pathname.endsWith("/room/new"),
+    );
+
+    const roomUrl = hostPage.url();
+    const roomId = roomUrl.split("/room/")[1];
+
+    await guestPage.goto(`/en-GB/room/${roomId}`);
+
+    await expect(hostPage.locator("text=Players")).toBeVisible({ timeout: 15000 });
+    await expect(guestPage.locator("text=Players")).toBeVisible({ timeout: 15000 });
+
+    await hostPage.locator("button:has-text(\"Conundrum\")").click();
+    await expect(hostPage.locator("button:has-text(\"Start Conundrum\")")).toBeVisible({ timeout: 8000 });
+    await hostPage.locator("button:has-text(\"Start Conundrum\")").click();
+
+    await hostPage.waitForURL(/\/conundrum$/, { timeout: 10000 });
+    await guestPage.waitForURL(/\/conundrum$/, { timeout: 10000 });
+    await expect(hostPage.locator("h1", { hasText: "Conundrum" })).toBeVisible();
+
+    const tiles = hostPage.locator("kbd.border-warning");
+    await expect(tiles.first()).toBeVisible({ timeout: 10000 });
+    const first = await tiles.allTextContents();
+    expect(first.length).toBeGreaterThan(0);
+
+    await hostPage.waitForTimeout(1500);
+    expect(await tiles.allTextContents()).toEqual(first);
+
+    await hostCtx.close();
+    await guestCtx.close();
+  });
+});
