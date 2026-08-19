@@ -23,6 +23,7 @@ export async function GET(
 
 type JoinBody = { action: "join"; player: PlayerRecord };
 type LeaveBody = { action: "leave"; peerId: string };
+type DisconnectBody = { action: "disconnect"; peerId: string };
 type HeartbeatBody = { action: "heartbeat"; peerId: string };
 
 export async function POST(
@@ -30,7 +31,11 @@ export async function POST(
   { params }: { params: Promise<{ roomId: string }> },
 ) {
   const { roomId } = await params;
-  const body = (await request.json()) as JoinBody | LeaveBody | HeartbeatBody;
+  const body = (await request.json()) as
+    | JoinBody
+    | LeaveBody
+    | DisconnectBody
+    | HeartbeatBody;
 
   let room = getRoom(roomId);
   if (!room) {
@@ -50,7 +55,7 @@ export async function POST(
         ),
       });
     }
-  } else if (body.action === "leave") {
+  } else if (body.action === "leave" || body.action === "disconnect") {
     updateRoom(roomId, {
       players: room.players.filter((p) => p.peerId !== body.peerId),
     });

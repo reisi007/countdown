@@ -100,6 +100,32 @@ export function useMultiplayerRound({
             if (mounted) peerJoinHandlerRef.current?.(peerId);
           },
           onPlayerLeave: () => {},
+          // Tie roster pruning to the real PeerJS signaling connection state:
+          // a genuine drop removes us from the server immediately (instead of
+          // waiting for the heartbeat timeout), and a recovery re-registers us.
+          onSignalingDisconnect: () => {
+            if (!peer) return;
+            fetch(`/api/rooms/${roomId}`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ action: "disconnect", peerId: peer.peerId }),
+            }).catch(() => {});
+          },
+          onSignalingReconnect: () => {
+            if (!peer) return;
+            fetch(`/api/rooms/${roomId}`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                action: "join",
+                player: {
+                  peerId: peer.peerId,
+                  joinedAt: peer.getJoinedAt(),
+                  nickname,
+                },
+              }),
+            }).catch(() => {});
+          },
         });
 
         peerRef.current = peer;

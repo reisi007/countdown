@@ -16,6 +16,18 @@ export type PeerConfig = {
   onMessage: (msg: PeerMessage) => void;
   onPlayerJoin: (peerId: string) => void;
   onPlayerLeave: (peerId: string) => void;
+  /**
+   * Fired when the signaling connection is lost and does not recover within a
+   * short grace period. The host app uses this to drop the player from the
+   * server roster immediately, tying pruning to the real PeerJS connection
+   * state instead of waiting for the heartbeat timeout.
+   */
+  onSignalingDisconnect?: () => void;
+  /**
+   * Fired when the signaling connection recovers after a drop. The host app
+   * uses this to re-register the player with the server roster.
+   */
+  onSignalingReconnect?: () => void;
 };
 
 const PEER_ID_KEY = "peerId";
@@ -58,6 +70,8 @@ export class PeerManager {
   private staleCleanup: (() => void) | null = null;
   private staleTimer: ReturnType<typeof setTimeout> | null = null;
   private staleTimeoutMs = 10 * 60 * 1000;
+  private disconnectNotifyTimer: ReturnType<typeof setTimeout> | null = null;
+  private wasDisconnected = false;
 
   constructor(config: PeerConfig) {
     this.connections = new Map();
@@ -91,6 +105,11 @@ export class PeerManager {
     this.peer.on("open", () => {
       this.roomReady = true;
       this.clearStaleTimer();
+      this.clearDisconnectNotifyTimer();
+      if (this.wasDisconnected) {
+        this.wasDisconnected = false;
+        this.config.onSignalingReconnect?.();
+      }
       if (this.connectTimeout) {
         clearTimeout(this.connectTimeout);
         this.connectTimeout = null;
@@ -115,6 +134,8 @@ export class PeerManager {
       }
       this.peer.reconnect();
       this.scheduleStaleCleanup();
+      this.wasDisconnected = true;
+      this.scheduleDisconnectNotify();
     });
 
     this.peer.on("error", (err) => {
@@ -179,6 +200,28 @@ export class PeerManager {
       if (this.destroyed || this.peer.open) return;
       this.staleCleanup?.();
     }, this.staleTimeoutMs);
+  }
+
+  /**
+   * After a signaling drop, wait a short grace period. If the connection has
+   * not recovered (`open`) by then, the player is effectively gone, so notify
+   * the host app to remove it from the server roster. A transient blip that
+   * reconnects within the grace window never fires this.
+   */
+  private scheduleDisconnectNotify(): void {
+    this.clearDisconnectNotifyTimer();
+    this.disconnectNotifyTimer = setTimeout(() => {
+      this.disconnectNotifyTimer = null;
+      if (this.destroyed || this.peer.open) return;
+      this.config.onSignalingDisconnect?.();
+    }, 3000);
+  }
+
+  private clearDisconnectNotifyTimer(): void {
+    if (this.disconnectNotifyTimer) {
+      clearTimeout(this.disconnectNotifyTimer);
+      this.disconnectNotifyTimer = null;
+    }
   }
 
   getJoinedAt(): number {
@@ -293,6 +336,7 @@ export class PeerManager {
     this.destroyed = true;
     this.roomReady = false;
     this.clearStaleTimer();
+    this.clearDisconnectNotifyTimer();
     if (this.connectTimeout) {
       clearTimeout(this.connectTimeout);
       this.connectTimeout = null;

@@ -182,6 +182,41 @@ describe("POST /api/rooms/[roomId]", () => {
     expect(data.players).toHaveLength(0);
   });
 
+  it("disconnect: removes the player from the roster", async () => {
+    await post("test123", {
+      action: "join",
+      player: { peerId: "p1", joinedAt: 50_000, nickname: "Alice" },
+    });
+
+    const response = await post("test123", {
+      action: "disconnect",
+      peerId: "p1",
+    });
+    const data = await response.json();
+
+    expect(data.players).toHaveLength(0);
+  });
+
+  it("disconnect: leaves other players untouched", async () => {
+    await post("test123", {
+      action: "join",
+      player: { peerId: "p1", joinedAt: 50_000, nickname: "Alice" },
+    });
+    await post("test123", {
+      action: "join",
+      player: { peerId: "p2", joinedAt: 50_100, nickname: "Bob" },
+    });
+
+    const response = await post("test123", {
+      action: "disconnect",
+      peerId: "p1",
+    });
+    const data = await response.json();
+
+    expect(data.players).toHaveLength(1);
+    expect(data.players[0].peerId).toBe("p2");
+  });
+
   it("heartbeat: updates lastHeartbeat", async () => {
     await post("test123", {
       action: "join",
