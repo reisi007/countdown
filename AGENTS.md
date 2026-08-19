@@ -185,7 +185,7 @@ pnpm test:e2e      # Playwright (requires built app)
 
 1. **Trigger**: Push to `main`
 2. **Build VM**: Node 26, pnpm, install deps
-3. **Test + E2E (parallel)**: Vitest suite + typecheck (`test` job); Playwright E2E (`e2e` job: `npx playwright install --with-deps chromium` → `pnpm build` → `pnpm test:e2e`, HTML report uploaded as artifact)
+3. **Test + E2E (parallel)**: Vitest suite + typecheck (`test` job); Playwright E2E (`e2e` job runs inside the official Playwright image `mcr.microsoft.com/playwright:v1.61.1-noble` — Chromium + system deps preinstalled, no per-run `playwright install`; `pnpm build` → `pnpm test:e2e`, HTML report uploaded as artifact)
 4. **Docker Build** (multi-stage, `needs: [test, e2e]`):
    - Stage 1 (Install): `pnpm install --frozen-lockfile`
    - Stage 2 (Build): `pnpm build` (Next.js production build)
