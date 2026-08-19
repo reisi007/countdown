@@ -5,6 +5,7 @@ import Link from "next/link";
 import { PeerManager, PeerMessage } from "@/lib/webrtc/peer";
 import { useMultiplayerRound } from "@/lib/webrtc/useMultiplayerRound";
 import { ConundrumGame } from "@/components/ConundrumGame";
+import { ScorePanel } from "@/components/ScorePanel";
 import {
   checkSolution,
   getConundrumWord,
@@ -13,6 +14,8 @@ import {
   resetScrambled,
   type ConundrumState,
 } from "@/lib/game/conundrum";
+import { calculateConundrumScore, mergeScores } from "@/lib/game/scoring";
+import { readScores, writeScores, readRound } from "@/lib/scoreboard";
 
 const BUZZER_TIMEOUT = 5;
 const ROUND_TIMEOUT = 30;
@@ -60,6 +63,7 @@ export default function MultiplayerConundrumPage() {
   const myPeerIdRef = useRef<string | null>(null);
   const myNicknameRef = useRef<string>("");
   const setIsHostFnRef = useRef<(v: boolean) => void>(() => {});
+  const rosterRef = useRef<string[]>([]);
 
   const realHandlerRef = useRef<(msg: PeerMessage, peer: PeerManager) => void>(() => {});
 
@@ -177,10 +181,19 @@ export default function MultiplayerConundrumPage() {
     peer.broadcast({ type: "conundrum-shuffle", payload: { scrambled: next } });
   };
 
+  const finalizeConundrum = (peer: PeerManager, winnerPeerId: string | null) => {
+    if (!isHostRef.current) return;
+    const round = calculateConundrumScore(winnerPeerId, rosterRef.current);
+    const merged = mergeScores(readScores(roomId), round);
+    writeScores(roomId, merged);
+    peer.broadcast({ type: "scores-update", payload: merged });
+  };
+
   const handleMessage = (msg: PeerMessage, peer: PeerManager) => {
     switch (msg.type) {
       case "player-list": {
         const list = msg.payload as Array<{ peerId: string; joinedAt: number; nickname: string }>;
+        rosterRef.current = list.map((p) => p.peerId);
         const hostPeerId = list.length > 0
           ? list.reduce((oldest, p) => (p.joinedAt < oldest.joinedAt ? p : oldest)).peerId
           : null;
@@ -267,6 +280,7 @@ export default function MultiplayerConundrumPage() {
             answer: answerRef.current,
           },
         });
+        finalizeConundrum(peer, correct ? guessPayload.peerId : null);
         break;
       }
       case "conundrum-result": {
@@ -286,6 +300,7 @@ export default function MultiplayerConundrumPage() {
         } else {
           setPhase("timeout");
         }
+        finalizeConundrum(peer, result.correct ? result.peerId : null);
         break;
       }
       case "conundrum-timeout": {
@@ -293,6 +308,12 @@ export default function MultiplayerConundrumPage() {
         roundActiveRef.current = false;
         setAnswerReveal((msg.payload as { answer: string }).answer);
         setPhase("timeout");
+        finalizeConundrum(peer, null);
+        break;
+      }
+      case "scores-update": {
+        const s = msg.payload as Record<string, number>;
+        writeScores(roomId, s);
         break;
       }
       case "timer-sync": {
@@ -382,6 +403,11 @@ export default function MultiplayerConundrumPage() {
         </div>
         <div className="flex-none">
           <h1 className="text-lg sm:text-xl font-bold text-primary">Conundrum</h1>
+          {readRound(roomId) > 0 && (
+            <span className="badge badge-secondary badge-sm ml-3">
+              Round {readRound(roomId)}
+            </span>
+          )}
         </div>
       </div>
 
@@ -408,6 +434,8 @@ export default function MultiplayerConundrumPage() {
           onReset={() => peerRef.current && resetScramble(peerRef.current)}
           canShuffle={isHost && (phase === "playing" || phase === "buzzed" || phase === "answering")}
         />
+
+        <ScorePanel roomId={roomId} myPeerId={myPeerId} />
       </div>
     </div>
   );

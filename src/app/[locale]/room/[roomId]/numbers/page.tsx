@@ -9,9 +9,11 @@ import {
   type NumbersSolution,
   type NumbersTileResult,
 } from "@/lib/game/numbers";
-import { keepBestSubmission } from "@/lib/game/scoring";
+import { keepBestSubmission, calculateNumbersScore, mergeScores } from "@/lib/game/scoring";
+import { readScores, writeScores, readRound } from "@/lib/scoreboard";
 import { NumberDrawer } from "@/components/NumberDrawer";
 import { NumberPlayInteractive } from "@/components/NumberPlayInteractive";
+import { ScorePanel } from "@/components/ScorePanel";
 
 type PlayerSubmission = {
   peerId: string;
@@ -142,6 +144,13 @@ export default function MultiplayerNumbersPage() {
       const sol = solveNumbers(tilesRef.current, targetRef.current);
       setSolution(sol);
       p.broadcast({ type: "num-results", payload: { submissions: sorted, solution: sol } });
+
+      const round = calculateNumbersScore(
+        sorted.map((s) => ({ peerId: s.peerId, diff: s.diff })),
+      );
+      const merged = mergeScores(readScores(roomId), round);
+      writeScores(roomId, merged);
+      p.broadcast({ type: "scores-update", payload: merged });
     }
 
     setPhase("finished");
@@ -448,6 +457,11 @@ export default function MultiplayerNumbersPage() {
         setScoringStarted(true);
         break;
       }
+      case "scores-update": {
+        const s = msg.payload as Record<string, number>;
+        writeScores(roomId, s);
+        break;
+      }
     }
   };
 
@@ -487,6 +501,11 @@ export default function MultiplayerNumbersPage() {
         </div>
         <div className="flex-none">
           <h1 className="text-lg sm:text-xl font-bold text-warning">Numbers Round</h1>
+          {readRound(roomId) > 0 && (
+            <span className="badge badge-secondary badge-sm ml-3">
+              Round {readRound(roomId)}
+            </span>
+          )}
         </div>
         <div className="flex-1" />
       </div>
@@ -660,6 +679,8 @@ export default function MultiplayerNumbersPage() {
               )}
             </div>
           </div>
+
+          <ScorePanel roomId={roomId} myPeerId={myPeerId} />
         </div>
       </div>
     </div>

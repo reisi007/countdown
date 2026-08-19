@@ -5,6 +5,7 @@ import Link from "next/link";
 import { PeerManager, PeerMessage } from "@/lib/webrtc/peer";
 import { useMultiplayerRound } from "@/lib/webrtc/useMultiplayerRound";
 import { LettersGame } from "@/components/LettersGame";
+import { ScorePanel } from "@/components/ScorePanel";
 import {
   createLettersGame,
   addVowel,
@@ -14,7 +15,8 @@ import {
   resetTiles,
   type LetterTile,
 } from "@/lib/game/letters";
-import { keepBestSubmission } from "@/lib/game/scoring";
+import { keepBestSubmission, calculateLettersScore, mergeScores } from "@/lib/game/scoring";
+import { readScores, writeScores, readRound } from "@/lib/scoreboard";
 
 const TILES = 9;
 
@@ -92,18 +94,16 @@ export default function MultiplayerLettersPage() {
     );
     const w = sorted.length > 0 && sorted[0].length > 0 ? sorted[0] : null;
 
-    const points: Record<string, number> = {};
-    for (const s of sorted) {
-      points[s.peerId] = s.length;
+    if (isHostRef.current) {
+      const round = calculateLettersScore(
+        sorted.map((s) => ({ peerId: s.peerId, valid: s.length > 0, length: s.length })),
+      );
+      const merged = mergeScores(readScores(roomId), round);
+      writeScores(roomId, merged);
+      peer.broadcast({ type: "scores-update", payload: merged });
     }
-    const prev = JSON.parse(sessionStorage.getItem(`scores_${roomId}`) ?? "{}");
-    for (const [pid, p] of Object.entries(prev as Record<string, number>)) {
-      points[pid] = (points[pid] ?? 0) + p;
-    }
-    sessionStorage.setItem(`scores_${roomId}`, JSON.stringify(points));
 
     peer.broadcast({ type: "round-results", payload: { submissions: sorted, winner: w } });
-    peer.broadcast({ type: "scores-update", payload: points });
     setSubmissions(sorted);
     setWinner(w);
     setPhase("finished");
@@ -274,7 +274,7 @@ export default function MultiplayerLettersPage() {
       }
       case "scores-update": {
         const s = msg.payload as Record<string, number>;
-        sessionStorage.setItem(`scores_${roomId}`, JSON.stringify(s));
+        writeScores(roomId, s);
         break;
       }
     }
@@ -314,6 +314,11 @@ export default function MultiplayerLettersPage() {
         </div>
         <div className="flex-none">
           <h1 className="text-lg sm:text-xl font-bold text-primary">Letters Round</h1>
+          {readRound(roomId) > 0 && (
+            <span className="badge badge-secondary badge-sm ml-3">
+              Round {readRound(roomId)}
+            </span>
+          )}
         </div>
       </div>
 
@@ -407,6 +412,8 @@ export default function MultiplayerLettersPage() {
               )}
             </div>
           </div>
+
+          <ScorePanel roomId={roomId} myPeerId={myPeerId} />
         </div>
       </div>
     </div>

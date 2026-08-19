@@ -10,10 +10,22 @@ import {
 import type { PlayerInfo } from "@/lib/webrtc/leader-election";
 import type { PlayerRecord } from "@/lib/db";
 import { normalizeGermanWord } from "@/lib/game/letters";
+import { ScorePanel } from "@/components/ScorePanel";
+import {
+  type GameType,
+  nextGameRotation,
+  readRound,
+  readBestOf,
+  readLastGame,
+  writeRound,
+  writeBestOf,
+  writeLastGame,
+  writeRoster,
+  writeScores,
+} from "@/lib/scoreboard";
 
 type PlayerEntry = PlayerInfo & { nickname: string };
 type NicknameMap = Record<string, string>;
-type GameType = "letters" | "numbers" | "conundrum";
 
 const GAME_NAMES: Record<GameType, string> = {
   letters: "Letters Round",
@@ -37,12 +49,16 @@ export default function RoomPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const [selectedGame, setSelectedGame] = useState<GameType>("letters");
+  const [selectedGame, setSelectedGame] = useState<GameType>(() =>
+    nextGameRotation(readLastGame(roomId)),
+  );
   const [timerEnabled, setTimerEnabled] = useState(true);
   const [timerDuration, setTimerDuration] = useState(30);
   const [editingNickname, setEditingNickname] = useState(false);
   const [nicknameInput, setNicknameInput] = useState("");
   const [, setScores] = useState<Record<string, number>>({});
+  const [roundCount, setRoundCount] = useState<number>(() => readRound(roomId));
+  const [bestOf, setBestOf] = useState<number>(() => readBestOf(roomId));
   const [myPeerId, setMyPeerId] = useState<string | null>(null);
 
   const peerRef = useRef<PeerManager | null>(null);
@@ -70,6 +86,9 @@ export default function RoomPage() {
     playersRef.current = updatedPlayers;
     setPlayers(updatedPlayers);
     recalculateHost(updatedPlayers);
+    const roster: Record<string, string> = {};
+    for (const p of updatedPlayers) roster[p.peerId] = p.nickname;
+    writeRoster(roomId, roster);
   };
 
   useEffect(() => {
@@ -169,7 +188,7 @@ export default function RoomPage() {
         }
         case "scores-update": {
           const s = msg.payload as Record<string, number>;
-          sessionStorage.setItem(`scores_${roomId}`, JSON.stringify(s));
+          writeScores(roomId, s);
           setScores(s);
           break;
         }
@@ -245,6 +264,9 @@ export default function RoomPage() {
         });
         setPlayers(roomPlayers);
         recalculateHost(roomPlayers);
+        const initRoster: Record<string, string> = {};
+        for (const p of roomPlayers) initRoster[p.peerId] = p.nickname;
+        writeRoster(roomId, initRoster);
 
         for (const p of roomPlayers) {
           if (p.peerId !== peer.peerId) {
@@ -370,6 +392,11 @@ export default function RoomPage() {
   const startGame = (gameType: GameType) => {
     const peer = peerRef.current;
     if (!peer) return;
+    const nextRound = roundCount + 1;
+    setRoundCount(nextRound);
+    writeRound(roomId, nextRound);
+    writeLastGame(roomId, gameType);
+    writeBestOf(roomId, bestOf);
     sessionStorage.setItem(`timer_${roomId}`, String(timerEnabled ? timerDuration : 0));
     peer.broadcast({ type: "game-start", payload: { gameType, timerEnabled, timerDuration } });
     router.push(`/${locale}/room/${roomId}/${gameType}`);
@@ -525,6 +552,27 @@ export default function RoomPage() {
             <h2 className="card-title">Room Controls</h2>
             <div className="divider" />
 
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-sm">
+                <span className="font-bold text-primary">Round {roundCount + 1}</span>
+                <span className="text-base-content/50"> / Best of {bestOf}</span>
+              </div>
+              {isHost && (
+                <label className="flex items-center gap-1.5 text-xs text-base-content/60">
+                  Best of
+                  <select
+                    className="select select-bordered select-xs"
+                    value={bestOf}
+                    onChange={(e) => setBestOf(Number(e.target.value))}
+                  >
+                    {[3, 5, 7, 9].map((n) => (
+                      <option key={n} value={n}>{n}</option>
+                    ))}
+                  </select>
+                </label>
+              )}
+            </div>
+
             <button
               className="btn btn-outline btn-primary w-full"
               onClick={copyInviteLink}
@@ -580,6 +628,10 @@ export default function RoomPage() {
                     },
                   )}
                 </div>
+
+                <p className="text-xs text-base-content/50 text-center">
+                  Up next: {GAME_NAMES[nextGameRotation(selectedGame)]}
+                </p>
 
                 <div className="divider my-1" />
                 <div className="flex items-center justify-between">
@@ -641,6 +693,10 @@ export default function RoomPage() {
               Leave Room
             </button>
           </div>
+        </div>
+
+        <div className="w-full lg:w-80">
+          <ScorePanel roomId={roomId} myPeerId={myPeerId} />
         </div>
       </div>
     </div>
