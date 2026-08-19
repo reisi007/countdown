@@ -61,7 +61,7 @@ export function ScorePanel({
         <div className="divider my-1" />
 
         {entries.length === 0 ? (
-          <p className="text-base-content/40 text-sm text-center py-4">
+          <p className="text-base-content/50 text-sm text-center py-4">
             No scores yet
           </p>
         ) : (

@@ -96,7 +96,7 @@ export function NumberPlayInteractive({
   const allNumbers = [...tiles, ...results.map((r) => r.value)];
 
   return (
-    <div className="flex flex-1 flex-col lg:flex-row items-center lg:items-start justify-center gap-4 sm:gap-6 w-full">
+    <div className="flex flex-col lg:flex-row items-center lg:items-start justify-center gap-4 sm:gap-6 w-full">
       <div className="flex flex-col items-center gap-4 w-full max-w-xl">
         <div className="text-4xl sm:text-5xl font-bold tabular-nums text-warning">
           {target}
@@ -112,10 +112,10 @@ export function NumberPlayInteractive({
                   className={`flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center rounded-lg border-2 shadow-md transition-all select-none font-bold text-2xl sm:text-3xl tabular-nums
                     ${
                       usedIndices.has(i)
-                        ? "border-base-content/10 bg-blue-950/10 text-base-content/10 scale-90 opacity-25 cursor-not-allowed"
+                        ? "border-base-content/10 bg-secondary/10 text-base-content/10 scale-90 opacity-25 cursor-not-allowed"
                         : sel
                           ? "border-warning bg-warning/30 text-warning scale-110 shadow-warning/20 cursor-pointer"
-                          : "border-blue-400 bg-blue-950/80 text-blue-50 hover:border-warning/50 cursor-pointer"
+                          : "border-secondary bg-secondary/20 text-secondary hover:border-warning/50 cursor-pointer"
                     }`}
                   onClick={() => onSelectNumber(i)}
                   disabled={usedIndices.has(i)}
@@ -138,10 +138,10 @@ export function NumberPlayInteractive({
                     className={`flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center rounded-lg border-2 shadow-md transition-all select-none font-bold text-2xl sm:text-3xl tabular-nums
                       ${
                         isUsed
-                          ? "border-base-content/10 bg-blue-950/10 text-base-content/10 scale-90 opacity-25 cursor-not-allowed"
+                          ? "border-base-content/10 bg-secondary/10 text-base-content/10 scale-90 opacity-25 cursor-not-allowed"
                           : sel
                             ? "border-warning bg-warning/30 text-warning scale-110 shadow-warning/20 cursor-pointer"
-                            : "border-success bg-success/20 text-success hover:border-warning/50 cursor-pointer"
+                            : "border-success bg-success/20 text-success hover:border-secondary/50 cursor-pointer"
                       }`}
                     style={{ animation: "popIn 0.3s ease-out" }}
                     onClick={() => onSelectNumber(globalIdx)}

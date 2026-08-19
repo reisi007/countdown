@@ -374,7 +374,7 @@ export default function MultiplayerLettersPage() {
               <div className="divider my-1" />
 
               {leaderboard.length === 0 ? (
-                <p className="text-base-content/40 text-sm text-center py-4">
+                <p className="text-base-content/50 text-sm text-center py-4">
                   No submissions yet
                 </p>
               ) : (

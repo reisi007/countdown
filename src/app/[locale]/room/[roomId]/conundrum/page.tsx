@@ -411,31 +411,35 @@ export default function MultiplayerConundrumPage() {
         </div>
       </div>
 
-      <div className="flex flex-col items-center gap-6 flex-1">
-        <ConundrumGame
-          locale={locale}
-          scrambled={scrambled}
-          phase={phase}
-          guess={guess}
-          onGuessChange={(value) => { setGuess(value.toUpperCase()); setGuessError(null); }}
-          onSubmitGuess={submitGuess}
-          guessError={guessError}
-          timeRemaining={timeRemaining}
-          timerDuration={phase === "answering" ? BUZZER_TIMEOUT : ROUND_TIMEOUT}
-          onBuzz={buzz}
-          hasBuzzed={hasBuzzed}
-          buzzerName={buzzerName}
-          isBuzzer={buzzerId === myPeerId}
-          answerReveal={answerReveal}
-          solvedByName={solvedByName}
-          showBuzzButton={phase === "playing"}
-          backLink={`/${locale}/room/${roomId}`}
-          onShuffle={() => peerRef.current && shuffleScramble(peerRef.current)}
-          onReset={() => peerRef.current && resetScramble(peerRef.current)}
-          canShuffle={isHost && (phase === "playing" || phase === "buzzed" || phase === "answering")}
-        />
+      <div className="flex flex-col lg:flex-row gap-4 sm:gap-6 flex-1 justify-center">
+        <div className="flex flex-col items-center gap-6 flex-1 max-w-lg mx-auto">
+          <ConundrumGame
+            locale={locale}
+            scrambled={scrambled}
+            phase={phase}
+            guess={guess}
+            onGuessChange={(value) => { setGuess(value.toUpperCase()); setGuessError(null); }}
+            onSubmitGuess={submitGuess}
+            guessError={guessError}
+            timeRemaining={timeRemaining}
+            timerDuration={phase === "answering" ? BUZZER_TIMEOUT : ROUND_TIMEOUT}
+            onBuzz={buzz}
+            hasBuzzed={hasBuzzed}
+            buzzerName={buzzerName}
+            isBuzzer={buzzerId === myPeerId}
+            answerReveal={answerReveal}
+            solvedByName={solvedByName}
+            showBuzzButton={phase === "playing"}
+            backLink={`/${locale}/room/${roomId}`}
+            onShuffle={() => peerRef.current && shuffleScramble(peerRef.current)}
+            onReset={() => peerRef.current && resetScramble(peerRef.current)}
+            canShuffle={isHost && (phase === "playing" || phase === "buzzed" || phase === "answering")}
+          />
+        </div>
 
-        <ScorePanel roomId={roomId} myPeerId={myPeerId} />
+        <div className="w-full max-w-xs lg:max-w-sm">
+          <ScorePanel roomId={roomId} myPeerId={myPeerId} />
+        </div>
       </div>
     </div>
   );

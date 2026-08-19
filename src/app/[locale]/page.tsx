@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { getMenuStrings } from "@/lib/i18n/ui-strings";
 
 const LOCALES = [
   { code: "en-GB", label: "English (UK)" },
@@ -12,13 +13,14 @@ type Props = {
 
 export default async function MainMenu({ params }: Props) {
   const { locale } = await params;
+  const { tagline, solo, multiplayer } = getMenuStrings(locale);
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-8 p-4">
       <div className="text-center">
         <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-primary">Countdown</h1>
         <p className="mt-2 text-lg sm:text-xl text-base-content/60">
-          The Classic TV Game Show
+          {tagline}
         </p>
       </div>
 
@@ -27,13 +29,13 @@ export default async function MainMenu({ params }: Props) {
           href={`/${locale}/solo`}
           className="btn btn-primary btn-lg w-full"
         >
-          Solo Play
+          {solo}
         </Link>
         <Link
           href={`/${locale}/room/new`}
           className="btn btn-secondary btn-lg w-full"
         >
-          Multiplayer
+          {multiplayer}
         </Link>
       </div>
 
@@ -42,7 +44,7 @@ export default async function MainMenu({ params }: Props) {
           <Link
             key={loc.code}
             href={`/${loc.code}`}
-            className={`btn btn-xs ${locale === loc.code ? "btn-primary" : "btn-ghost"}`}
+            className={`btn btn-xs ${locale === loc.code ? "btn-primary" : "btn-outline"}`}
           >
             {loc.label}
           </Link>

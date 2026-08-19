@@ -695,7 +695,7 @@ export default function RoomPage() {
           </div>
         </div>
 
-        <div className="w-full lg:w-80">
+        <div className="w-full lg:w-96">
           <ScorePanel roomId={roomId} myPeerId={myPeerId} />
         </div>
       </div>
