@@ -286,3 +286,45 @@ describe("MultiplayerConundrumPage — message-driven flow", () => {
     expect((resultCall![0] as { payload: { answer: string } }).payload.answer).toBe(WORD);
   });
 });
+
+describe("MultiplayerConundrumPage — solo host", () => {
+  it("lets a lone host solve the conundrum directly without a buzzer", () => {
+    ctl.state = { isHost: true, myPeerId: "host", myNickname: "Host", error: null };
+
+    render(<MultiplayerConundrumPage />);
+
+    dispatch({
+      type: "player-list",
+      payload: [{ peerId: "host", joinedAt: 1, nickname: "Host" }],
+      senderId: "lobby",
+      timestamp: 1,
+    });
+
+    act(() => {
+      ctl.onReady({
+        peer: ctl.fakePeer,
+        myPeerId: "host",
+        myNickname: "Host",
+        isHost: true,
+        hostName: "Host",
+      });
+    });
+
+    // Solo: scrambled tiles appear, but there is no Buzzer button to press.
+    expect(tileText()).toBe(SCRAMBLED);
+    expect(screen.queryByRole("button", { name: "Buzzer" })).toBeNull();
+    expect(screen.getByPlaceholderText("Type the answer...")).toBeTruthy();
+
+    // The host types the answer and submits directly (no relay over the wire).
+    const input = screen.getByPlaceholderText("Type the answer...");
+    fireEvent.change(input, { target: { value: WORD } });
+    fireEvent.click(screen.getByRole("button", { name: "Submit" }));
+
+    expect(ctl.fakePeer.broadcast).not.toHaveBeenCalledWith(
+      expect.objectContaining({ type: "conundrum-guess" }),
+    );
+    expect(screen.getByText("Solved!")).toBeTruthy();
+    expect(screen.getByText(WORD)).toBeTruthy();
+    expect(screen.getByText(/Solved by you/)).toBeTruthy();
+  });
+});

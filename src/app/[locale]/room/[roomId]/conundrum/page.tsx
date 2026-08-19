@@ -189,6 +189,32 @@ export default function MultiplayerConundrumPage() {
     peer.broadcast({ type: "scores-update", payload: merged });
   };
 
+  const resolveConundrum = (
+    peer: PeerManager,
+    peerId: string,
+    guessWord: string,
+    nickname: string,
+  ) => {
+    const correct = checkSolution(
+      { answer: answerRef.current } as ConundrumState,
+      guessWord,
+    );
+    clearAllTimers();
+    roundActiveRef.current = false;
+    setAnswerReveal(answerRef.current);
+    if (correct) {
+      setSolvedByName(peerId === myPeerIdRef.current ? "you" : nickname);
+      setPhase("solved");
+    } else {
+      setPhase("timeout");
+    }
+    peer.broadcast({
+      type: "conundrum-result",
+      payload: { peerId, guess: guessWord, correct, nickname, answer: answerRef.current },
+    });
+    finalizeConundrum(peer, correct ? peerId : null);
+  };
+
   const handleMessage = (msg: PeerMessage, peer: PeerManager) => {
     switch (msg.type) {
       case "player-list": {
@@ -263,24 +289,7 @@ export default function MultiplayerConundrumPage() {
       case "conundrum-guess": {
         const guessPayload = msg.payload as { peerId: string; guess: string; nickname: string };
         if (!isHostRef.current) return;
-        const correct = checkSolution(
-          { answer: answerRef.current } as ConundrumState,
-          guessPayload.guess,
-        );
-        clearAllTimers();
-        roundActiveRef.current = false;
-        setAnswerReveal(answerRef.current);
-        peer.broadcast({
-          type: "conundrum-result",
-          payload: {
-            peerId: guessPayload.peerId,
-            guess: guessPayload.guess,
-            correct,
-            nickname: guessPayload.nickname,
-            answer: answerRef.current,
-          },
-        });
-        finalizeConundrum(peer, correct ? guessPayload.peerId : null);
+        resolveConundrum(peer, guessPayload.peerId, guessPayload.guess, guessPayload.nickname);
         break;
       }
       case "conundrum-result": {
@@ -365,10 +374,16 @@ export default function MultiplayerConundrumPage() {
     const peer = peerRef.current;
     if (!peer) return;
 
-    peer.broadcast({
-      type: "conundrum-guess",
-      payload: { peerId: peer.peerId, guess: word, nickname: myNicknameRef.current },
-    });
+    // A solo host has no opponent to relay a guess to, so evaluate locally.
+    const solo = isHostRef.current && rosterRef.current.length === 1;
+    if (solo) {
+      resolveConundrum(peer, myPeerIdRef.current ?? peer.peerId, word, myNicknameRef.current);
+    } else {
+      peer.broadcast({
+        type: "conundrum-guess",
+        payload: { peerId: peer.peerId, guess: word, nickname: myNicknameRef.current },
+      });
+    }
   }
 
   if (error) {
@@ -389,6 +404,10 @@ export default function MultiplayerConundrumPage() {
       </div>
     );
   }
+
+  // A solo host (only themselves in the roster) has no opponent to buzz
+  // against, so they solve the conundrum directly instead of using the buzzer.
+  const isSolo = isHost && rosterRef.current.length === 1;
 
   return (
     <div className="flex min-h-screen flex-col p-4">
@@ -429,7 +448,7 @@ export default function MultiplayerConundrumPage() {
             isBuzzer={buzzerId === myPeerId}
             answerReveal={answerReveal}
             solvedByName={solvedByName}
-            showBuzzButton={phase === "playing"}
+            showBuzzButton={phase === "playing" && !isSolo}
             backLink={`/${locale}/room/${roomId}`}
             onShuffle={() => peerRef.current && shuffleScramble(peerRef.current)}
             onReset={() => peerRef.current && resetScramble(peerRef.current)}
